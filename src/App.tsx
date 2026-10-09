@@ -78,6 +78,10 @@ export function App() {
     updateStaff,
     deleteStaff,
     resetFilters,
+    pendingChangesCount,
+    isSavingPending,
+    savePendingTodayChanges,
+    discardPendingTodayChanges,
     pullFromSupabase,
     pushToSupabase
   } = useAttendanceData()
@@ -236,6 +240,10 @@ export function App() {
                 onUpdateWage={updateUsualWage}
                 onOpenAttendanceEdit={handleOpenAttendanceEdit}
                 onOpenStaffActionSheet={handleOpenActionSheet}
+                pendingChangesCount={pendingChangesCount}
+                isSavingPending={isSavingPending}
+                onSavePendingChanges={savePendingTodayChanges}
+                onDiscardPendingChanges={discardPendingTodayChanges}
               />
             )}
 

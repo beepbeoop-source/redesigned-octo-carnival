@@ -78,6 +78,11 @@ export function useAttendanceData() {
   const [supabaseLatency, setSupabaseLatency] = useState<number | null>(null)
   const [isSyncing, setIsSyncing] = useState<boolean>(false)
 
+  // Unsaved / Pending Changes Queue for Today's Attendance & Wages
+  const [pendingTodayAttendance, setPendingTodayAttendance] = useState<Record<string, AttendanceMark>>({})
+  const [pendingWages, setPendingWages] = useState<Record<string, string | number>>({})
+  const [isSavingPending, setIsSavingPending] = useState<boolean>(false)
+
   // Staff list state (pure real data)
   const [staffList, setStaffList] = useState<Staff[]>(() => {
     try {
@@ -349,7 +354,7 @@ export function useAttendanceData() {
     localStorage.setItem(MONTH_KEY, month)
   }, [])
 
-  // Granular Real-Time Database Operations
+  // Granular Real-Time Database Operations with Holding for Today's Attendance & Wages
   const updateAttendance = useCallback((id: string, date: string, mark: AttendanceMark) => {
     setStaffList((prev) =>
       prev.map((staff) => {
@@ -365,21 +370,79 @@ export function useAttendanceData() {
         return staff
       })
     )
-    syncAttendanceRecord(id, date, mark)
-  }, [])
+
+    if (date === today) {
+      // Hold in pending queue for today
+      setPendingTodayAttendance((prev) => ({
+        ...prev,
+        [id]: mark
+      }))
+    } else {
+      // For previous dates, directly sync to DB as confirmed via modal
+      syncAttendanceRecord(id, date, mark)
+    }
+  }, [today])
 
   const updateUsualWage = useCallback((id: string, wage: string | number) => {
+    const sanitizedWage = wage === 0 || wage === '0' ? '' : wage
     setStaffList((prev) =>
       prev.map((staff) => {
         if (staff.id === id) {
-          const sanitizedWage = wage === 0 || wage === '0' ? '' : wage
-          const updated = { ...staff, wage: sanitizedWage }
-          syncStaffProfile(updated)
-          return updated
+          return { ...staff, wage: sanitizedWage }
         }
         return staff
       })
     )
+
+    // Hold wage updates in pending changes
+    setPendingWages((prev) => ({
+      ...prev,
+      [id]: sanitizedWage
+    }))
+  }, [])
+
+  const savePendingTodayChanges = useCallback(async () => {
+    if (!isSupabaseConfigured()) {
+      setPendingTodayAttendance({})
+      setPendingWages({})
+      return
+    }
+
+    setIsSavingPending(true)
+    try {
+      // 1. Sync all pending attendance marks for today
+      const attendanceEntries = Object.entries(pendingTodayAttendance)
+      for (const [id, mark] of attendanceEntries) {
+        await syncAttendanceRecord(id, today, mark)
+      }
+
+      // 2. Sync all pending wage updates
+      const wageEntries = Object.entries(pendingWages)
+      for (const [id, wage] of wageEntries) {
+        const staff = staffList.find((s) => s.id === id)
+        if (staff) {
+          await syncStaffProfile({ ...staff, wage })
+        }
+      }
+
+      setPendingTodayAttendance({})
+      setPendingWages({})
+    } catch (err) {
+      console.error('Failed to save pending changes to DB:', err)
+    } finally {
+      setIsSavingPending(false)
+    }
+  }, [pendingTodayAttendance, pendingWages, staffList, today])
+
+  const discardPendingTodayChanges = useCallback(async () => {
+    setPendingTodayAttendance({})
+    setPendingWages({})
+    if (isSupabaseConfigured()) {
+      const { data: cloudStaff } = await fetchStaffFromSupabase()
+      if (cloudStaff && Array.isArray(cloudStaff)) {
+        setStaffList(cloudStaff)
+      }
+    }
   }, [])
 
   const updateDailyWage = useCallback((id: string, date: string, wage: string | number) => {
@@ -594,6 +657,12 @@ export function useAttendanceData() {
     updateStaff,
     deleteStaff,
     resetFilters,
+    pendingTodayAttendance,
+    pendingWages,
+    pendingChangesCount: Object.keys(pendingTodayAttendance).length + Object.keys(pendingWages).length,
+    isSavingPending,
+    savePendingTodayChanges,
+    discardPendingTodayChanges,
     pullFromSupabase,
     pushToSupabase
   }
