@@ -269,186 +269,65 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   onSetPeriod,
   maxDate = localToday(),
   className,
-  align = 'start'
+  align = 'end'
 }) => {
   const [open, setOpen] = useState(false)
-  const todayStr = useMemo(() => localToday(), [])
-
-  const [localFrom, setLocalFrom] = useState(fromDate)
-  const [localTo, setLocalTo] = useState(toDate)
-
-  React.useEffect(() => {
-    setLocalFrom(fromDate)
-    setLocalTo(toDate)
-  }, [fromDate, toDate])
 
   const periodLabel =
     fromDate === toDate
       ? formatDate(fromDate)
       : `${formatDate(fromDate)} – ${formatDate(toDate)}`
 
-  const applyPreset = (preset: 'today' | '7days' | 'thisMonth' | 'lastMonth') => {
-    const now = new Date()
-    if (preset === 'today') {
-      onSetPeriod(todayStr, todayStr)
-      setLocalFrom(todayStr)
-      setLocalTo(todayStr)
-      setOpen(false)
-    } else if (preset === '7days') {
-      const past = new Date(now)
-      past.setDate(past.getDate() - 6)
-      const pastStr = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, '0')}-${String(past.getDate()).padStart(2, '0')}`
-      onSetPeriod(pastStr, todayStr)
-      setLocalFrom(pastStr)
-      setLocalTo(todayStr)
-      setOpen(false)
-    } else if (preset === 'thisMonth') {
-      const y = now.getFullYear()
-      const m = String(now.getMonth() + 1).padStart(2, '0')
-      const lastDay = new Date(y, now.getMonth() + 1, 0).getDate()
-      const start = `${y}-${m}-01`
-      let end = `${y}-${m}-${String(lastDay).padStart(2, '0')}`
-      if (end > todayStr) end = todayStr
-      onSetPeriod(start, end)
-      setLocalFrom(start)
-      setLocalTo(end)
-      setOpen(false)
-    } else if (preset === 'lastMonth') {
-      const pastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      const y = pastMonth.getFullYear()
-      const m = String(pastMonth.getMonth() + 1).padStart(2, '0')
-      const lastDay = new Date(y, pastMonth.getMonth() + 1, 0).getDate()
-      const start = `${y}-${m}-01`
-      const end = `${y}-${m}-${String(lastDay).padStart(2, '0')}`
-      onSetPeriod(start, end)
-      setLocalFrom(start)
-      setLocalTo(end)
-      setOpen(false)
-    }
-  }
-
-  const handleApply = () => {
-    let start = localFrom
-    let end = localTo
-    if (maxDate && end > maxDate) end = maxDate
-    if (start > end) start = end
-    onSetPeriod(start, end)
-    setOpen(false)
-  }
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         className={cn(
-          'inline-flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/5 hover:bg-emerald-500/10 text-xs font-semibold text-emerald-950 dark:text-emerald-300 transition-all cursor-pointer shadow-2xs',
+          'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-xs font-medium text-foreground transition-all cursor-pointer shadow-2xs',
           className
         )}
       >
-        <div className="flex items-center gap-1.5 truncate">
-          <CalendarIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <span className="truncate">{periodLabel}</span>
-        </div>
-        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 shrink-0">
-          <span>Range</span>
-          <ChevronDown className="w-3 h-3 opacity-75" />
-        </div>
+        <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <span className="truncate">{periodLabel}</span>
+        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0 opacity-60 ml-0.5" />
       </PopoverTrigger>
 
       <PopoverContent
         align={align}
         sideOffset={6}
-        className="w-[300px] p-3.5 rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-xl space-y-3"
+        className="w-[260px] p-3 rounded-lg border border-border/80 bg-popover text-popover-foreground shadow-xl space-y-2.5"
       >
-        {/* Presets Header */}
-        <div className="grid grid-cols-4 gap-1">
-          <button
-            type="button"
-            onClick={() => applyPreset('today')}
-            className={cn(
-              'py-1 text-[11px] font-bold rounded-md transition-colors text-center cursor-pointer',
-              fromDate === toDate && fromDate === todayStr
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60'
-            )}
-          >
-            Today
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPreset('7days')}
-            className="py-1 text-[11px] font-bold rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 transition-colors text-center cursor-pointer"
-          >
-            7 Days
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPreset('thisMonth')}
-            className="py-1 text-[11px] font-bold rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 transition-colors text-center cursor-pointer"
-          >
-            Month
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPreset('lastMonth')}
-            className="py-1 text-[11px] font-bold rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 transition-colors text-center cursor-pointer"
-          >
-            Prev
-          </button>
+        <div className="space-y-1">
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+            From Date:
+          </label>
+          <DatePicker
+            value={fromDate}
+            onChange={(d) => {
+              let to = toDate
+              if (d > to) to = d
+              if (maxDate && to > maxDate) to = maxDate
+              onSetPeriod(d, to)
+            }}
+            maxDate={maxDate}
+            className="w-full h-8 text-xs"
+          />
         </div>
 
-        {/* Date Pickers for From and To */}
-        <div className="space-y-2 pt-1 border-t border-border/60">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Start Date (From):
-            </label>
-            <DatePicker
-              value={localFrom}
-              onChange={(d) => {
-                setLocalFrom(d)
-                if (d > localTo) setLocalTo(d)
-              }}
-              maxDate={maxDate}
-              className="w-full"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              End Date (To):
-            </label>
-            <DatePicker
-              value={localTo}
-              onChange={(d) => {
-                setLocalTo(d)
-                if (d < localFrom) setLocalFrom(d)
-              }}
-              maxDate={maxDate}
-              minDate={localFrom}
-              className="w-full"
-            />
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setOpen(false)}
-            className="h-8 text-xs font-semibold"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleApply}
-            className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3"
-          >
-            Apply Range
-          </Button>
+        <div className="space-y-1">
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+            To Date:
+          </label>
+          <DatePicker
+            value={toDate}
+            onChange={(d) => {
+              let from = fromDate
+              if (d < from) from = d
+              onSetPeriod(from, d)
+            }}
+            maxDate={maxDate}
+            minDate={fromDate}
+            className="w-full h-8 text-xs"
+          />
         </div>
       </PopoverContent>
     </Popover>

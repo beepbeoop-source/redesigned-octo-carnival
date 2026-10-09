@@ -59,9 +59,9 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   const isAdmin = currentUserProfile?.role === 'admin'
 
   return (
-    <aside className="hidden md:flex flex-col w-64 lg:w-72 fixed left-0 top-0 bottom-0 bg-card border-r border-border/80 z-30 shadow-sm select-none">
+    <aside className="hidden md:flex flex-col w-64 lg:w-72 fixed left-0 top-0 bottom-0 bg-sidebar border-r border-sidebar-border z-30 shadow-sm select-none">
       {/* Brand Header & Top Actions */}
-      <div className="p-4 border-b border-border/70 space-y-2.5 bg-muted/20">
+      <div className="p-4 border-b border-sidebar-border space-y-2.5 bg-sidebar/50">
         <div className="flex items-center gap-3">
           {storeProfile.logo ? (
             <img

@@ -97,106 +97,96 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList }) => {
 
   return (
     <div className="space-y-6">
-      {/* 5 Key Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-        <Card className="border-border/80 shadow-xs bg-gradient-to-br from-card to-card/50">
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+      {/* 5 Key Metric Cards (2x2 on mobile, 5-col on desktop) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3.5">
+        {/* Staff Members */}
+        <Card className="border-border/80 shadow-2xs bg-card hover:border-border transition-colors">
+          <CardContent className="p-2.5 sm:p-3.5 flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-muted/60 dark:bg-muted/40 border border-border/50 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground block truncate leading-tight">
                 Staff Members
               </span>
-              <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                <Users className="w-4 h-4" />
+              <div className="text-base sm:text-2xl font-bold tracking-tight text-foreground truncate mt-0.5">
+                {staffList.length}
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              {staffList.length}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Active staff roster</p>
           </CardContent>
         </Card>
 
-        <Card className="border-border/80 shadow-xs bg-gradient-to-br from-card to-card/50">
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        {/* Attendance Pay */}
+        <Card className="border-border/80 shadow-2xs bg-card hover:border-border transition-colors">
+          <CardContent className="p-2.5 sm:p-3.5 flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-muted/60 dark:bg-muted/40 border border-border/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+              <Banknote className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground block truncate leading-tight">
                 Attendance Pay
               </span>
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <Banknote className="w-4 h-4" />
+              <div className="text-base sm:text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 truncate mt-0.5">
+                {formatCurrency(totalStats.base)}
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(totalStats.base)}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Base wages earned</p>
           </CardContent>
         </Card>
 
-        <Card className="border-border/80 shadow-xs bg-gradient-to-br from-card to-card/50">
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        {/* Over-Duty Pay */}
+        <Card className="border-border/80 shadow-2xs bg-card hover:border-border transition-colors">
+          <CardContent className="p-2.5 sm:p-3.5 flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-muted/60 dark:bg-muted/40 border border-border/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+              <ClockAlert className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground block truncate leading-tight">
                 Over-Duty Pay
               </span>
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400">
-                <ClockAlert className="w-4 h-4" />
+              <div className="text-base sm:text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-400 truncate mt-0.5">
+                {formatCurrency(totalStats.ot)}
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-amber-600 dark:text-amber-400">
-              {formatCurrency(totalStats.ot)}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Extra duty allowance</p>
           </CardContent>
         </Card>
 
-        <Card className="border-border/80 shadow-xs bg-gradient-to-br from-card to-card/50">
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        {/* Advance Deducted */}
+        <Card className="border-border/80 shadow-2xs bg-card hover:border-border transition-colors">
+          <CardContent className="p-2.5 sm:p-3.5 flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-muted/60 dark:bg-muted/40 border border-border/50 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+              <HandCoins className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground block truncate leading-tight">
                 Advance Deducted
               </span>
-              <div className="w-7 h-7 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                <HandCoins className="w-4 h-4" />
+              <div className="text-base sm:text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400 truncate mt-0.5">
+                {formatCurrency(totalStats.adv)}
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-rose-600 dark:text-rose-400">
-              {formatCurrency(totalStats.adv)}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Salary advances adjusted</p>
           </CardContent>
         </Card>
 
-        <Card className="col-span-2 sm:col-span-1 border-border/80 shadow-xs bg-gradient-to-br from-emerald-500/10 via-card to-card dark:from-emerald-950/30">
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
+        {/* Net Salary */}
+        <Card className="col-span-2 sm:col-span-1 border-border/80 shadow-2xs bg-card hover:border-border transition-colors border-emerald-500/30">
+          <CardContent className="p-2.5 sm:p-3.5 flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-300 shrink-0">
+              <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-300 block truncate leading-tight">
                 Net Salary
               </span>
-              <div className="w-7 h-7 rounded-lg bg-emerald-600/20 flex items-center justify-center text-emerald-700 dark:text-emerald-300">
-                <Wallet className="w-4 h-4" />
+              <div className="text-base sm:text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-300 truncate mt-0.5">
+                {formatCurrency(totalStats.net)}
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-700 dark:text-emerald-300">
-              {formatCurrency(totalStats.net)}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Total net payout</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Info Notice Banner */}
-      <div className="flex items-center gap-3 p-3.5 bg-emerald-50/80 dark:bg-emerald-950/40 border-l-4 border-emerald-600 rounded-r-xl text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm">
+      <div className="flex items-center gap-3 p-3.5 bg-emerald-50/80 dark:bg-emerald-950/20 border-l-4 border-emerald-600 rounded-r-xl text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm">
         <Info className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
         <div>
           <strong>Dashboard Summary:</strong> Breakdown grouped by outlet and department for current active period. Use Attendance tab to configure daily records.

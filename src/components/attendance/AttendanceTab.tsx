@@ -169,7 +169,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
             <Button
               size="sm"
               onClick={handleApply}
-              className="h-8.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3"
+              className="h-7.5 sm:h-8.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-2.5 sm:px-3"
             >
               Apply
             </Button>
@@ -177,7 +177,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
               variant="outline"
               size="sm"
               onClick={handleSetToday}
-              className="h-8.5 border-border text-foreground font-medium text-xs px-2.5"
+              className="h-7.5 sm:h-8.5 border-border text-foreground font-medium text-xs px-2 sm:px-2.5"
             >
               Today
             </Button>
@@ -191,7 +191,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
             size="sm"
             onClick={() => setViewMode('cards')}
             className={cn(
-              'h-8 px-2.5 text-xs font-semibold gap-1.5',
+              'h-7 sm:h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1.5',
               viewMode === 'cards' && 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
             )}
           >
@@ -204,7 +204,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
             size="sm"
             onClick={() => setViewMode('table')}
             className={cn(
-              'h-8 px-2.5 text-xs font-semibold gap-1.5',
+              'h-7 sm:h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1.5',
               viewMode === 'table' && 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
             )}
           >
@@ -339,7 +339,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                         type="button"
                         onClick={() => handleCardMarkClick(staff, selectedMobileDate, 'P')}
                         className={cn(
-                          'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none cursor-pointer',
+                          'flex items-center justify-center gap-1 py-1.5 px-1 rounded-md text-xs font-bold transition-all select-none cursor-pointer',
                           mark === 'P'
                             ? 'bg-green-600 text-white shadow-xs ring-2 ring-green-600/30'
                             : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -353,7 +353,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                         type="button"
                         onClick={() => handleCardMarkClick(staff, selectedMobileDate, 'H')}
                         className={cn(
-                          'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none cursor-pointer',
+                          'flex items-center justify-center gap-1 py-1.5 px-1 rounded-md text-xs font-bold transition-all select-none cursor-pointer',
                           mark === 'H'
                             ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-500/30'
                             : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -367,7 +367,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                         type="button"
                         onClick={() => handleCardMarkClick(staff, selectedMobileDate, 'A')}
                         className={cn(
-                          'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none cursor-pointer',
+                          'flex items-center justify-center gap-1 py-1.5 px-1 rounded-md text-xs font-bold transition-all select-none cursor-pointer',
                           mark === 'A'
                             ? 'bg-red-600 text-white shadow-xs ring-2 ring-red-600/30'
                             : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'

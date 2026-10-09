@@ -151,9 +151,9 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
       {/* Navigation Drawer (Sheet) */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent side="left" className="w-[85vw] max-w-[320px] p-0 flex flex-col bg-card border-r border-border pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <SheetContent side="left" className="w-[85vw] max-w-[320px] p-0 flex flex-col bg-sidebar border-r border-sidebar-border pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           {/* Drawer Header with Brand Profile & Top Actions */}
-          <SheetHeader className="p-3.5 border-b border-border/80 text-left bg-muted/30 space-y-2.5">
+          <SheetHeader className="p-3.5 border-b border-sidebar-border text-left bg-sidebar/50 space-y-2.5">
             <div className="flex items-center gap-3">
               {storeProfile.logo ? (
                 <img

@@ -33,7 +33,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ activeTab, onTab
     <>
       {/* Desktop / Tablet Horizontal or Top Bar Tabs */}
       <nav aria-label="Main Navigation" className="w-full">
-        <div className="flex items-center gap-1.5 p-1.5 bg-muted/60 dark:bg-neutral-900/80 border border-border/80 rounded-2xl backdrop-blur-md overflow-x-auto scrollbar-none shadow-sm">
+        <div className="flex items-center gap-1.5 p-1.5 bg-muted/60 dark:bg-card border border-border/80 rounded-2xl backdrop-blur-md overflow-x-auto scrollbar-none shadow-sm">
           {TABS.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -65,7 +65,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ activeTab, onTab
       </nav>
 
       {/* Mobile Floating Bottom Bar for Touch Screens & Native App */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 dark:bg-neutral-950/95 backdrop-blur-lg border-t border-border px-2 py-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-2xl">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-lg border-t border-border px-2 py-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-2xl">
         <div className="flex items-center justify-around overflow-x-auto scrollbar-none gap-1">
           {TABS.map((tab) => {
             const Icon = tab.icon
