@@ -80,7 +80,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
       setDesignation('')
       setStatus('Working')
       setSalaryType('fixed')
-      setWage('650')
+      setWage('')
     }
     setError('')
   }, [editingStaff, isOpen, existingOutlets])
@@ -258,7 +258,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                 step="1"
                 value={wage}
                 onChange={(e) => setWage(e.target.value)}
-                placeholder="650"
+                placeholder="Leave empty or enter wage"
                 className="h-9 bg-background"
               />
             </div>

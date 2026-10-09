@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS staff (
   outlet TEXT NOT NULL DEFAULT 'Main Branch',
   designation TEXT DEFAULT '-',
   status TEXT NOT NULL DEFAULT 'Working',
-  wage NUMERIC DEFAULT 650,
+  wage NUMERIC DEFAULT 0,
   salary_changes BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -240,11 +240,12 @@ CREATE POLICY "Users can update own profile"
   WITH CHECK (auth.uid() = id);
 
 -- ------------------------------------------------------------------------------
--- B. Business Data Policies (Locked to Authenticated Users)
+-- B. Business Data Policies (STRICTLY LOCKED TO AUTHENTICATED USERS ONLY)
 -- ------------------------------------------------------------------------------
 -- Staff Master
 DROP POLICY IF EXISTS "Public staff all" ON staff;
 DROP POLICY IF EXISTS "Authenticated staff all" ON staff;
+DROP POLICY IF EXISTS "Allow all staff access" ON staff;
 CREATE POLICY "Authenticated staff all"
   ON staff FOR ALL
   TO authenticated
@@ -254,6 +255,7 @@ CREATE POLICY "Authenticated staff all"
 -- Attendance Records
 DROP POLICY IF EXISTS "Public attendance all" ON attendance;
 DROP POLICY IF EXISTS "Authenticated attendance all" ON attendance;
+DROP POLICY IF EXISTS "Allow all attendance access" ON attendance;
 CREATE POLICY "Authenticated attendance all"
   ON attendance FOR ALL
   TO authenticated
@@ -263,6 +265,7 @@ CREATE POLICY "Authenticated attendance all"
 -- Overtime Records
 DROP POLICY IF EXISTS "Public overtime all" ON overtime;
 DROP POLICY IF EXISTS "Authenticated overtime all" ON overtime;
+DROP POLICY IF EXISTS "Allow all overtime access" ON overtime;
 CREATE POLICY "Authenticated overtime all"
   ON overtime FOR ALL
   TO authenticated
@@ -272,6 +275,7 @@ CREATE POLICY "Authenticated overtime all"
 -- Cash Advances
 DROP POLICY IF EXISTS "Public advances all" ON advances;
 DROP POLICY IF EXISTS "Authenticated advances all" ON advances;
+DROP POLICY IF EXISTS "Allow all advances access" ON advances;
 CREATE POLICY "Authenticated advances all"
   ON advances FOR ALL
   TO authenticated
@@ -281,24 +285,24 @@ CREATE POLICY "Authenticated advances all"
 -- Daily Wage Overrides
 DROP POLICY IF EXISTS "Public daily_wages all" ON daily_wages;
 DROP POLICY IF EXISTS "Authenticated daily_wages all" ON daily_wages;
+DROP POLICY IF EXISTS "Allow all daily_wages access" ON daily_wages;
 CREATE POLICY "Authenticated daily_wages all"
   ON daily_wages FOR ALL
   TO authenticated
   USING (true)
   WITH CHECK (true);
 
--- Store Profile & Settings
+-- Store Profile & Settings (Public can read branding, Only Authenticated can write)
 DROP POLICY IF EXISTS "Public store_profile all" ON store_profile;
 DROP POLICY IF EXISTS "Public read store_profile" ON store_profile;
 DROP POLICY IF EXISTS "Authenticated write store_profile" ON store_profile;
+DROP POLICY IF EXISTS "Allow all store_profile access" ON store_profile;
 
--- Public can read store branding for login view
 CREATE POLICY "Public read store_profile"
   ON store_profile FOR SELECT
   TO anon, authenticated
   USING (true);
 
--- Only authenticated users can update store branding
 CREATE POLICY "Authenticated write store_profile"
   ON store_profile FOR ALL
   TO authenticated

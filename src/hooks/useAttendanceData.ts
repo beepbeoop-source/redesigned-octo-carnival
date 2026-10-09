@@ -6,7 +6,7 @@ import {
   monthRange,
   calculateStaffPayroll
 } from '../lib/attendanceUtils'
-import { isSupabaseConfigured, testSupabaseConnection } from '../lib/supabaseClient'
+import { isSupabaseConfigured, testSupabaseConnection, getSupabase } from '../lib/supabaseClient'
 import { startKeepAliveService, stopKeepAliveService } from '../lib/supabaseKeepAlive'
 import {
   fetchStaffFromSupabase,
@@ -116,6 +116,37 @@ export function useAttendanceData() {
 
   // Initialize Supabase & Keep-Alive service
   useEffect(() => {
+    const loadCloudData = async () => {
+      const client = getSupabase()
+      if (!client || !isSupabaseConfigured()) return
+
+      // Only query protected tables when an authenticated session exists
+      const { data: sessionData } = await client.auth.getSession()
+      if (!sessionData?.session?.user) {
+        return
+      }
+
+      try {
+        setIsSyncing(true)
+        const { data: cloudStaff, error: staffErr } = await fetchStaffFromSupabase()
+        const { data: cloudProfile } = await fetchStoreProfileFromSupabase()
+
+        if (staffErr) {
+          console.warn('Failed to fetch staff from Supabase:', staffErr)
+        } else if (cloudStaff && Array.isArray(cloudStaff)) {
+          setStaffList(cloudStaff)
+        }
+
+        if (cloudProfile && cloudProfile.name) {
+          setStoreProfileState(cloudProfile)
+        }
+      } catch (err) {
+        console.error('Error loading Supabase cloud data:', err)
+      } finally {
+        setIsSyncing(false)
+      }
+    }
+
     const initSupabase = async () => {
       if (isSupabaseConfigured()) {
         startKeepAliveService()
@@ -124,19 +155,7 @@ export function useAttendanceData() {
         setSupabaseLatency(res.latencyMs || null)
 
         if (res.success) {
-          setIsSyncing(true)
-          const { data: cloudStaff } = await fetchStaffFromSupabase()
-          const { data: cloudProfile } = await fetchStoreProfileFromSupabase()
-
-          if (cloudStaff && Array.isArray(cloudStaff)) {
-            setStaffList(cloudStaff)
-          }
-
-          if (cloudProfile && cloudProfile.name) {
-            setStoreProfileState(cloudProfile)
-          }
-
-          setIsSyncing(false)
+          await loadCloudData()
         }
       } else {
         stopKeepAliveService()
@@ -146,8 +165,23 @@ export function useAttendanceData() {
     }
 
     initSupabase().catch(console.error)
+
+    // Listen to Supabase auth events (e.g. login, session restored) and refresh data
+    const client = getSupabase()
+    let subscription: { unsubscribe: () => void } | null = null
+
+    if (client) {
+      const { data } = client.auth.onAuthStateChange(async (event: string) => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+          await loadCloudData()
+        }
+      })
+      subscription = data.subscription
+    }
+
     return () => {
       stopKeepAliveService()
+      if (subscription) subscription.unsubscribe()
     }
   }, [])
 
