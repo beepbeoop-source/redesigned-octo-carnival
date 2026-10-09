@@ -135,11 +135,11 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
                 'flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none',
                 isFutureDate && 'opacity-60 cursor-not-allowed',
                 currentMark === 'P'
-                  ? 'bg-emerald-100 dark:bg-emerald-950/80 border-emerald-500 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500'
+                  ? 'bg-green-100 dark:bg-green-950/80 border-green-500 text-green-800 dark:text-green-200 ring-2 ring-green-500'
                   : 'border-border bg-card text-foreground hover:bg-muted'
               )}
             >
-              <CheckCircle2 className="w-5 h-5 mb-1 text-emerald-600 dark:text-emerald-400" />
+              <CheckCircle2 className="w-5 h-5 mb-1 text-green-600 dark:text-green-400" />
               <span>Present (P)</span>
             </button>
 
@@ -167,11 +167,11 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
                 'flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none',
                 isFutureDate && 'opacity-60 cursor-not-allowed',
                 currentMark === 'A'
-                  ? 'bg-rose-100 dark:bg-rose-950/80 border-rose-500 text-rose-800 dark:text-rose-200 ring-2 ring-rose-500'
+                  ? 'bg-red-100 dark:bg-red-950/80 border-red-500 text-red-800 dark:text-red-200 ring-2 ring-red-500'
                   : 'border-border bg-card text-foreground hover:bg-muted'
               )}
             >
-              <XCircle className="w-5 h-5 mb-1 text-rose-600 dark:text-rose-400" />
+              <XCircle className="w-5 h-5 mb-1 text-red-600 dark:text-red-400" />
               <span>Absent (A)</span>
             </button>
           </div>

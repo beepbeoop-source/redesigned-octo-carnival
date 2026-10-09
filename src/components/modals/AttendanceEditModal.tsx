@@ -67,9 +67,9 @@ export const AttendanceEditModal: React.FC<AttendanceEditModalProps> = ({
               <span
                 className={cn(
                   'font-bold text-xs px-2 py-0.5 rounded',
-                  currentMark === 'P' && 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300',
+                  currentMark === 'P' && 'bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300',
                   currentMark === 'H' && 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300',
-                  currentMark === 'A' && 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300',
+                  currentMark === 'A' && 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300',
                   !currentMark && 'bg-muted text-muted-foreground'
                 )}
               >
@@ -96,11 +96,11 @@ export const AttendanceEditModal: React.FC<AttendanceEditModalProps> = ({
                 className={cn(
                   'flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all select-none cursor-pointer',
                   currentMark === 'P'
-                    ? 'bg-emerald-100 dark:bg-emerald-950/70 border-emerald-500 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500 shadow-xs'
-                    : 'border-border bg-card hover:bg-emerald-500/10 hover:border-emerald-500/40 text-foreground'
+                    ? 'bg-green-100 dark:bg-green-950/70 border-green-500 text-green-800 dark:text-green-200 ring-2 ring-green-500 shadow-xs'
+                    : 'border-border bg-card hover:bg-green-500/10 hover:border-green-500/40 text-foreground'
                 )}
               >
-                <CheckCircle2 className="w-5 h-5 mb-1.5 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle2 className="w-5 h-5 mb-1.5 text-green-600 dark:text-green-400" />
                 <span>Present · P</span>
               </button>
 
@@ -124,11 +124,11 @@ export const AttendanceEditModal: React.FC<AttendanceEditModalProps> = ({
                 className={cn(
                   'flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all select-none cursor-pointer',
                   currentMark === 'A'
-                    ? 'bg-rose-100 dark:bg-rose-950/70 border-rose-500 text-rose-800 dark:text-rose-200 ring-2 ring-rose-500 shadow-xs'
-                    : 'border-border bg-card hover:bg-rose-500/10 hover:border-rose-500/40 text-foreground'
+                    ? 'bg-red-100 dark:bg-red-950/70 border-red-500 text-red-800 dark:text-red-200 ring-2 ring-red-500 shadow-xs'
+                    : 'border-border bg-card hover:bg-red-500/10 hover:border-red-500/40 text-foreground'
                 )}
               >
-                <XCircle className="w-5 h-5 mb-1.5 text-rose-600 dark:text-rose-400" />
+                <XCircle className="w-5 h-5 mb-1.5 text-red-600 dark:text-red-400" />
                 <span>Absent · A</span>
               </button>
 

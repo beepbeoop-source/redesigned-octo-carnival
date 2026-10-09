@@ -91,9 +91,9 @@ export const DailyWageTab: React.FC<DailyWageTabProps> = ({
                     <span
                       className={cn(
                         'w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center',
-                        mark === 'P' && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-                        mark === 'H' && 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-                        mark === 'A' && 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+                        mark === 'P' && 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300 border border-green-300/40',
+                        mark === 'H' && 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-300/40',
+                        mark === 'A' && 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 border border-red-300/40',
                         mark === '—' && 'bg-muted text-muted-foreground'
                       )}
                     >
@@ -187,9 +187,9 @@ export const DailyWageTab: React.FC<DailyWageTabProps> = ({
                         <span
                           className={cn(
                             'inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold',
-                            mark === 'P' && 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300',
-                            mark === 'H' && 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300',
-                            mark === 'A' && 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300',
+                            mark === 'P' && 'bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 border border-green-300/40',
+                            mark === 'H' && 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-300/40',
+                            mark === 'A' && 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-300/40',
                             mark === '—' && 'bg-muted text-muted-foreground'
                           )}
                         >

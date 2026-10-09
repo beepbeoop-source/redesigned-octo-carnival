@@ -206,13 +206,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList, dates }) 
                       <TableCell className="text-center font-semibold text-xs sm:text-sm">
                         {g.staff}
                       </TableCell>
-                      <TableCell className="text-center text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <TableCell className="text-center text-xs sm:text-sm text-green-600 dark:text-green-400 font-semibold">
                         {g.full}
                       </TableCell>
                       <TableCell className="text-center text-xs sm:text-sm text-amber-600 dark:text-amber-400 font-semibold">
                         {g.half}
                       </TableCell>
-                      <TableCell className="text-center text-xs sm:text-sm text-rose-600 dark:text-rose-400 font-semibold">
+                      <TableCell className="text-center text-xs sm:text-sm text-red-600 dark:text-red-400 font-semibold">
                         {g.abs}
                       </TableCell>
                       <TableCell className="text-right font-medium text-xs sm:text-sm">
@@ -237,13 +237,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList, dates }) 
                     Grand Total
                   </TableCell>
                   <TableCell className="text-center text-xs sm:text-sm">{staffList.length}</TableCell>
-                  <TableCell className="text-center text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm">
+                  <TableCell className="text-center text-green-700 dark:text-green-300 text-xs sm:text-sm">
                     {totalStats.full}
                   </TableCell>
                   <TableCell className="text-center text-amber-700 dark:text-amber-300 text-xs sm:text-sm">
                     {totalStats.half}
                   </TableCell>
-                  <TableCell className="text-center text-rose-700 dark:text-rose-300 text-xs sm:text-sm">
+                  <TableCell className="text-center text-red-700 dark:text-red-300 text-xs sm:text-sm">
                     {totalStats.abs}
                   </TableCell>
                   <TableCell className="text-right text-xs sm:text-sm">

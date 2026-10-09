@@ -456,12 +456,12 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
             <div className="text-left md:text-right">
               <div className="text-xs text-muted-foreground font-medium">Days Attended</div>
               <div className="text-sm font-bold text-foreground">
-                <span className="text-emerald-600 dark:text-emerald-400">{selectedStaffCalc.full}P</span>
+                <span className="text-green-600 dark:text-green-400">{selectedStaffCalc.full}P</span>
                 {selectedStaffCalc.half > 0 && (
                   <span className="text-amber-600 dark:text-amber-400 ml-1.5">{selectedStaffCalc.half}H</span>
                 )}
                 {selectedStaffCalc.abs > 0 && (
-                  <span className="text-rose-600 dark:text-rose-400 ml-1.5">{selectedStaffCalc.abs}A</span>
+                  <span className="text-red-600 dark:text-red-400 ml-1.5">{selectedStaffCalc.abs}A</span>
                 )}
               </div>
             </div>

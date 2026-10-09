@@ -163,6 +163,16 @@
     overscroll-behavior-y: none;
     -webkit-font-smoothing: antialiased;
   }
+  /* Remove number input spin buttons across all browsers */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }
 
 /* Safe area insets for iOS notch, dynamic island and Android gesture bar */

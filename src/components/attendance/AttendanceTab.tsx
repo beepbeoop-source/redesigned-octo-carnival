@@ -341,7 +341,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                         className={cn(
                           'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none cursor-pointer',
                           mark === 'P'
-                            ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-600/30'
+                            ? 'bg-green-600 text-white shadow-xs ring-2 ring-green-600/30'
                             : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
                         )}
                       >
@@ -355,7 +355,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                         className={cn(
                           'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none cursor-pointer',
                           mark === 'H'
-                            ? 'bg-amber-600 text-white shadow-xs ring-2 ring-amber-600/30'
+                            ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-500/30'
                             : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
                         )}
                       >
@@ -369,7 +369,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                         className={cn(
                           'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none cursor-pointer',
                           mark === 'A'
-                            ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-600/30'
+                            ? 'bg-red-600 text-white shadow-xs ring-2 ring-red-600/30'
                             : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
                         )}
                       >
@@ -381,9 +381,9 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                     {/* Period Mini Summary */}
                     <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[11px] text-muted-foreground">
                       <span>
-                        Period: <strong className="text-emerald-600 font-bold">{calc.full}P</strong> ·{' '}
-                        <strong className="text-amber-600 font-bold">{calc.half}H</strong> ·{' '}
-                        <strong className="text-rose-600 font-bold">{calc.abs}A</strong>
+                        Period: <strong className="text-green-600 dark:text-green-400 font-bold">{calc.full}P</strong> ·{' '}
+                        <strong className="text-amber-600 dark:text-amber-400 font-bold">{calc.half}H</strong> ·{' '}
+                        <strong className="text-red-600 dark:text-red-400 font-bold">{calc.abs}A</strong>
                       </span>
                       <span className="font-bold text-foreground">
                         Earned: {formatCurrency(calc.net)}
@@ -427,9 +427,9 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                         </div>
                       </TableHead>
                     ))}
-                    <TableHead className="text-center font-semibold text-xs text-emerald-600">P</TableHead>
-                    <TableHead className="text-center font-semibold text-xs text-amber-600">H</TableHead>
-                    <TableHead className="text-center font-semibold text-xs text-rose-600">A</TableHead>
+                    <TableHead className="text-center font-semibold text-xs text-green-600 dark:text-green-400">P</TableHead>
+                    <TableHead className="text-center font-semibold text-xs text-amber-600 dark:text-amber-400">H</TableHead>
+                    <TableHead className="text-center font-semibold text-xs text-red-600 dark:text-red-400">A</TableHead>
                     <TableHead className="text-right font-semibold text-xs">Attendance Pay</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -492,11 +492,11 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                                   className={cn(
                                     'w-8 h-8 rounded-lg text-xs font-bold transition-all duration-150 flex items-center justify-center mx-auto cursor-pointer select-none',
                                     mark === 'P' &&
-                                      'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300/50 hover:bg-emerald-200',
+                                      'bg-green-100 dark:bg-green-950/70 text-green-800 dark:text-green-300 border border-green-400/50 hover:bg-green-200',
                                     mark === 'H' &&
-                                      'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/50 hover:bg-amber-200',
+                                      'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-400/50 hover:bg-amber-200',
                                     mark === 'A' &&
-                                      'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300/50 hover:bg-rose-200',
+                                      'bg-red-100 dark:bg-red-950/70 text-red-800 dark:text-red-300 border border-red-400/50 hover:bg-red-200',
                                     !mark &&
                                       'bg-muted/50 text-muted-foreground/40 hover:bg-muted hover:text-muted-foreground border border-transparent',
                                     !isTodayDate && 'ring-1 ring-border/50'
@@ -509,13 +509,13 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                             )
                           })}
 
-                          <TableCell className="text-center font-semibold text-xs text-emerald-600 dark:text-emerald-400">
+                          <TableCell className="text-center font-semibold text-xs text-green-600 dark:text-green-400">
                             {calc.full}
                           </TableCell>
                           <TableCell className="text-center font-semibold text-xs text-amber-600 dark:text-amber-400">
                             {calc.half}
                           </TableCell>
-                          <TableCell className="text-center font-semibold text-xs text-rose-600 dark:text-rose-400">
+                          <TableCell className="text-center font-semibold text-xs text-red-600 dark:text-red-400">
                             {calc.abs}
                           </TableCell>
                           <TableCell className="text-right font-bold text-xs sm:text-sm text-emerald-700 dark:text-emerald-300">
