@@ -31,7 +31,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { UserManagementSection } from './UserManagementSection'
-import type { StoreProfile, OutletLogo, Staff, UserProfile } from '@/types/attendance'
+import type { StoreProfile, OutletLogo, Staff, UserProfile, UserRole } from '@/types/attendance'
 import type { SyncResult } from '@/lib/supabaseSync'
 import { exportPayrollCsv } from '@/lib/attendanceUtils'
 import { uploadImage } from '@/lib/storageUtils'
@@ -52,7 +52,9 @@ interface SettingsTabProps {
   onAdminCreateUser?: (
     username: string,
     password: string,
-    name: string
+    name: string,
+    role?: UserRole,
+    outlet?: string
   ) => Promise<{ success: boolean; error?: string }>
   onAdminChangePassword?: (
     userId: string,
@@ -85,8 +87,8 @@ const CATEGORIES: {
   },
   {
     id: 'users',
-    label: 'Staff Accounts & Security',
-    description: 'Manage staff credentials, reset passwords & access',
+    label: 'App Users & Access',
+    description: 'Manage app login credentials, reset passwords & roles',
     icon: Users
   },
   {
@@ -768,6 +770,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           <UserManagementSection
             currentUserProfile={currentUserProfile}
             isAdmin={isAdmin}
+            availableOutlets={outlets}
             fetchUsersList={fetchUsersList}
             onAdminCreateUser={onAdminCreateUser}
             onAdminChangePassword={onAdminChangePassword}

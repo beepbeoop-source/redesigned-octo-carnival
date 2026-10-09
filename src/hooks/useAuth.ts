@@ -224,7 +224,9 @@ export function useAuth() {
   const adminCreateUser = async (
     username: string,
     password: string,
-    name: string
+    name: string,
+    role: UserRole = 'staff',
+    outlet: string = 'Main Branch'
   ): Promise<{ success: boolean; error?: string }> => {
     const client = getSupabase()
     if (!client) return { success: false, error: 'Database is not configured' }
@@ -234,8 +236,8 @@ export function useAuth() {
         p_username: username.trim(),
         p_password: password,
         p_name: name.trim(),
-        p_role: 'staff',
-        p_outlet: 'Main Branch'
+        p_role: role,
+        p_outlet: outlet
       })
 
       if (rpcErr) return { success: false, error: rpcErr.message }

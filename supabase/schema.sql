@@ -368,7 +368,7 @@ BEGIN
   clean_outlet := TRIM(p_outlet);
 
   IF clean_uname = '' THEN
-    RETURN json_build_object('success', false, 'error', 'Username cannot be empty.');
+    RETURN json_build_object('success', false, 'error', 'Username or email cannot be empty.');
   END IF;
 
   IF LENGTH(p_password) < 6 THEN
@@ -383,12 +383,23 @@ BEGIN
     clean_name := clean_uname;
   END IF;
 
-  v_email := clean_uname || '@hotelbilal.app';
+  -- Handle full email vs username
+  IF clean_uname LIKE '%@%' THEN
+    v_email := clean_uname;
+    clean_uname := split_part(clean_uname, '@', 1);
+  ELSE
+    v_email := clean_uname || '@hotelbilal.app';
+  END IF;
 
-  -- Check if user already exists
+  -- Check if user already exists in user_profiles or auth.users
   SELECT id INTO v_user_id FROM public.user_profiles WHERE username = clean_uname;
   IF FOUND THEN
     RETURN json_build_object('success', false, 'error', 'A user with this username already exists.');
+  END IF;
+
+  SELECT id INTO v_user_id FROM auth.users WHERE email = v_email;
+  IF FOUND THEN
+    RETURN json_build_object('success', false, 'error', 'A user with this email address already exists.');
   END IF;
 
   -- Create user in auth.users
@@ -425,6 +436,7 @@ BEGIN
     'user', json_build_object(
       'id', v_user_id,
       'username', clean_uname,
+      'email', v_email,
       'displayName', clean_name,
       'role', clean_role,
       'outlet', clean_outlet

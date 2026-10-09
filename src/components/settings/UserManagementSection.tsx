@@ -30,18 +30,28 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
-import type { UserProfile } from '@/types/attendance'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import type { UserProfile, UserRole } from '@/types/attendance'
 import { ChangePasswordModal } from './ChangePasswordModal'
 import { cn } from '@/lib/utils'
 
 interface UserManagementSectionProps {
   currentUserProfile: UserProfile | null
   isAdmin: boolean
+  availableOutlets?: string[]
   fetchUsersList: () => Promise<UserProfile[]>
   onAdminCreateUser: (
     username: string,
     password: string,
-    name: string
+    name: string,
+    role?: UserRole,
+    outlet?: string
   ) => Promise<{ success: boolean; error?: string }>
   onAdminChangePassword: (
     userId: string,
@@ -54,6 +64,7 @@ interface UserManagementSectionProps {
 export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
   currentUserProfile,
   isAdmin,
+  availableOutlets = ['Main Branch'],
   fetchUsersList,
   onAdminCreateUser,
   onAdminChangePassword,
@@ -67,6 +78,8 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false)
   const [createUsername, setCreateUsername] = useState<string>('')
   const [createName, setCreateName] = useState<string>('')
+  const [createRole, setCreateRole] = useState<UserRole>('staff')
+  const [createOutlet, setCreateOutlet] = useState<string>(availableOutlets[0] || 'Main Branch')
   const [createPassword, setCreatePassword] = useState<string>('')
   const [showCreatePassword, setShowCreatePassword] = useState<boolean>(false)
   const [createLoading, setCreateLoading] = useState<boolean>(false)
@@ -96,6 +109,8 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
   const handleOpenCreate = () => {
     setCreateUsername('')
     setCreateName('')
+    setCreateRole('staff')
+    setCreateOutlet(availableOutlets[0] || 'Main Branch')
     setCreatePassword('')
     setCreateError('')
     setIsCreateOpen(true)
@@ -106,7 +121,7 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
     setCreateError('')
 
     if (!createUsername.trim() || !createName.trim() || !createPassword.trim()) {
-      setCreateError('All fields are required.')
+      setCreateError('All required fields must be filled.')
       return
     }
 
@@ -121,14 +136,16 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
       const res = await onAdminCreateUser(
         createUsername.trim(),
         createPassword,
-        createName.trim()
+        createName.trim(),
+        createRole,
+        createOutlet
       )
 
       if (!res.success) {
-        setCreateError(res.error || 'Failed to create user.')
+        setCreateError(res.error || 'Failed to create user account.')
       } else {
         setIsCreateOpen(false)
-        setFeedback({ type: 'success', text: `User @${createUsername.trim()} created successfully.` })
+        setFeedback({ type: 'success', text: `User account for "${createName.trim()}" created successfully in Supabase.` })
         setTimeout(() => setFeedback(null), 3500)
         await loadUsers()
       }
@@ -193,10 +210,10 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
             <div>
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Users className="w-4 h-4 text-emerald-600" />
-                <span>User Accounts & Authentication</span>
+                <span>App Login Accounts & Roles</span>
               </CardTitle>
               <CardDescription className="text-xs">
-                Manage staff login access and reset passwords
+                Manage who can log in to operate this app (Admins and Standard Users)
               </CardDescription>
             </div>
 
@@ -220,7 +237,7 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                   className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold"
                 >
                   <UserPlus className="w-3.5 h-3.5 mr-1" />
-                  <span>Create User</span>
+                  <span>Create App User</span>
                 </Button>
               )}
             </div>
@@ -251,9 +268,9 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="text-xs font-semibold">User / Employee</TableHead>
-                  <TableHead className="text-xs font-semibold">Username</TableHead>
-                  <TableHead className="text-xs font-semibold">System Role</TableHead>
+                  <TableHead className="text-xs font-semibold">User Name</TableHead>
+                  <TableHead className="text-xs font-semibold">Login Username / Email</TableHead>
+                  <TableHead className="text-xs font-semibold">App Role</TableHead>
                   <TableHead className="text-xs font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -431,11 +448,11 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
 
       {/* Create New User Modal */}
       <Dialog open={isCreateOpen} onOpenChange={(open) => !open && setIsCreateOpen(false)}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <UserPlus className="w-4 h-4 text-emerald-600" />
-              <span>Create Staff User Account</span>
+              <span>Create App Login Account</span>
             </DialogTitle>
           </DialogHeader>
 
@@ -448,34 +465,78 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
 
             <div className="space-y-1.5">
               <Label htmlFor="new-user-name" className="text-xs font-semibold">
-                Employee Full Name <span className="text-rose-500">*</span>
+                User Full Name <span className="text-rose-500">*</span>
               </Label>
               <Input
                 id="new-user-name"
                 type="text"
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
-                placeholder="e.g. Riskhan"
+                placeholder="e.g. Cashier Counter 1 or Riskhan"
                 className="h-9 bg-background text-sm"
                 required
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="new-user-role" className="text-xs font-semibold">
+                  App Access Role <span className="text-rose-500">*</span>
+                </Label>
+                <Select
+                  value={createRole}
+                  onValueChange={(val) => setCreateRole(val as UserRole)}
+                >
+                  <SelectTrigger className="w-full h-9 bg-background border-border/80 text-xs">
+                    <SelectValue placeholder="Select Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="staff">Staff User (Standard)</SelectItem>
+                    <SelectItem value="admin">Administrator (Full)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="new-user-outlet" className="text-xs font-semibold">
+                  Branch / Outlet
+                </Label>
+                <Select
+                  value={createOutlet}
+                  onValueChange={(val) => setCreateOutlet(val || 'Main Branch')}
+                >
+                  <SelectTrigger className="w-full h-9 bg-background border-border/80 text-xs">
+                    <SelectValue placeholder="Select Branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableOutlets.map((o) => (
+                      <SelectItem key={o} value={o}>
+                        {o}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="new-user-username" className="text-xs font-semibold">
-                Username <span className="text-rose-500">*</span>
+                Username or Email <span className="text-rose-500">*</span>
               </Label>
               <Input
                 id="new-user-username"
                 type="text"
                 value={createUsername}
                 onChange={(e) => setCreateUsername(e.target.value)}
-                placeholder="e.g. cashier1 or riskhan"
+                placeholder="e.g. cashier1 or staff@hotelbilal.com"
                 className="h-9 bg-background text-sm"
                 autoCapitalize="none"
                 autoCorrect="off"
                 required
               />
+              <p className="text-[10px] text-muted-foreground">
+                Enter a username (e.g. <span className="font-mono">cashier1</span>) or any valid email address.
+              </p>
             </div>
 
             <div className="space-y-1.5">
