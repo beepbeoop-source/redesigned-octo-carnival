@@ -160,6 +160,18 @@
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Remove default spin buttons from all number inputs */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-8px); }
@@ -245,6 +257,13 @@
     font-size: 11px !important;
     background: #fafcfb !important;
     border-bottom: 1px solid #dfe8e3 !important;
+  }
+  .payslip-tablebox tfoot,
+  .payslip-tablebox tfoot tr,
+  .payslip-tablebox tfoot th,
+  .payslip-tablebox tfoot td {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
   }
   .payslip-tablebox img {
     max-width: 60px !important;

@@ -5,7 +5,6 @@ import {
   Key,
   Trash2,
   ShieldCheck,
-  Building2,
   RefreshCw,
   AlertCircle,
   CheckCircle2,
@@ -24,13 +23,6 @@ import {
   DialogFooter
 } from '@/components/ui/dialog'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
-import {
   Table,
   TableBody,
   TableCell,
@@ -45,13 +37,11 @@ import { cn } from '@/lib/utils'
 interface UserManagementSectionProps {
   currentUserProfile: UserProfile | null
   isAdmin: boolean
-  outlets: string[]
   fetchUsersList: () => Promise<UserProfile[]>
   onAdminCreateUser: (
     username: string,
     password: string,
-    name: string,
-    outlet: string
+    name: string
   ) => Promise<{ success: boolean; error?: string }>
   onAdminChangePassword: (
     userId: string,
@@ -64,7 +54,6 @@ interface UserManagementSectionProps {
 export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
   currentUserProfile,
   isAdmin,
-  outlets,
   fetchUsersList,
   onAdminCreateUser,
   onAdminChangePassword,
@@ -78,7 +67,6 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false)
   const [createUsername, setCreateUsername] = useState<string>('')
   const [createName, setCreateName] = useState<string>('')
-  const [createOutlet, setCreateOutlet] = useState<string>(outlets[0] || 'Main Branch')
   const [createPassword, setCreatePassword] = useState<string>('')
   const [showCreatePassword, setShowCreatePassword] = useState<boolean>(false)
   const [createLoading, setCreateLoading] = useState<boolean>(false)
@@ -108,7 +96,6 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
   const handleOpenCreate = () => {
     setCreateUsername('')
     setCreateName('')
-    setCreateOutlet(outlets[0] || 'Main Branch')
     setCreatePassword('')
     setCreateError('')
     setIsCreateOpen(true)
@@ -134,20 +121,19 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
       const res = await onAdminCreateUser(
         createUsername.trim(),
         createPassword,
-        createName.trim(),
-        createOutlet
+        createName.trim()
       )
 
       if (!res.success) {
-        setCreateError(res.error || 'Failed to create staff account.')
+        setCreateError(res.error || 'Failed to create user.')
       } else {
         setIsCreateOpen(false)
-        setFeedback({ type: 'success', text: `Staff account ${createName} created successfully!` })
+        setFeedback({ type: 'success', text: `User @${createUsername.trim()} created successfully.` })
         setTimeout(() => setFeedback(null), 3500)
         await loadUsers()
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to create staff account'
+      const msg = err instanceof Error ? err.message : 'Failed to create user'
       setCreateError(msg)
     } finally {
       setCreateLoading(false)
@@ -210,7 +196,7 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                 <span>User Accounts & Authentication</span>
               </CardTitle>
               <CardDescription className="text-xs">
-                Manage staff login access, assign branches, and reset passwords
+                Manage staff login access and reset passwords
               </CardDescription>
             </div>
 
@@ -267,7 +253,6 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead className="text-xs font-semibold">User / Employee</TableHead>
                   <TableHead className="text-xs font-semibold">Username</TableHead>
-                  <TableHead className="text-xs font-semibold">Assigned Branch</TableHead>
                   <TableHead className="text-xs font-semibold">System Role</TableHead>
                   <TableHead className="text-xs font-semibold text-right">Actions</TableHead>
                 </TableRow>
@@ -275,14 +260,14 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground text-xs">
+                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-xs">
                       <RefreshCw className="w-4 h-4 animate-spin inline-block mr-2 text-emerald-600" />
                       Loading authorized users...
                     </TableCell>
                   </TableRow>
                 ) : users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground text-xs">
+                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-xs">
                       No user accounts found. Click "Create User" to add one.
                     </TableCell>
                   </TableRow>
@@ -303,12 +288,6 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                         </TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground font-semibold">
                           @{u.username}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          <span className="inline-flex items-center gap-1">
-                            <Building2 className="w-3 h-3 text-muted-foreground" />
-                            <span>{u.outlet || 'Main Branch'}</span>
-                          </span>
                         </TableCell>
                         <TableCell className="text-xs">
                           <span
@@ -401,9 +380,6 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                         <p className="text-[11px] font-mono text-muted-foreground font-semibold">
                           @{u.username}
                         </p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Branch: {u.outlet || 'Main Branch'}
-                        </p>
                       </div>
 
                       <span
@@ -439,7 +415,7 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                             onClick={() => handleDeleteUser(u)}
                             className="h-7 px-2 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                           >
-                            <Trash2 className="w-3 h-3 mr-1" />
+                            <Trash2 className="w-3.5 h-3.5 mr-1" />
                             <span>Delete</span>
                           </Button>
                         )}
@@ -453,21 +429,20 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
         </CardContent>
       </Card>
 
-      {/* Admin Create User Dialog */}
+      {/* Create New User Modal */}
       <Dialog open={isCreateOpen} onOpenChange={(open) => !open && setIsCreateOpen(false)}>
-        <DialogContent className="sm:max-w-[460px]">
+        <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <UserPlus className="w-4 h-4 text-emerald-600" />
-              <span>Create New Staff Account</span>
+              <span>Create Staff User Account</span>
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleCreateSubmit} className="space-y-3.5 py-2">
+          <form onSubmit={handleCreateSubmit} className="space-y-3.5 py-1">
             {createError && (
-              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-200 text-xs font-medium">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-                <span>{createError}</span>
+              <div className="p-2.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-lg text-rose-700 dark:text-rose-200 text-xs font-semibold">
+                {createError}
               </div>
             )}
 
@@ -477,9 +452,10 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
               </Label>
               <Input
                 id="new-user-name"
+                type="text"
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
-                placeholder="e.g. Riskhan (Cashier)"
+                placeholder="e.g. Riskhan"
                 className="h-9 bg-background text-sm"
                 required
               />
@@ -500,27 +476,6 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                 autoCorrect="off"
                 required
               />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="new-user-outlet" className="text-xs font-semibold">
-                Branch / Outlet
-              </Label>
-              <Select
-                value={createOutlet || (outlets.length > 0 ? outlets[0] : 'Main Branch')}
-                onValueChange={(val) => setCreateOutlet(val as string)}
-              >
-                <SelectTrigger className="w-full h-9 bg-background border-input text-xs">
-                  <SelectValue placeholder="Select branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {outlets.map((o) => (
-                    <SelectItem key={o} value={o}>
-                      {o}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-1.5">

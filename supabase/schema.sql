@@ -1,41 +1,16 @@
 -- ==============================================================================
--- CLEAN RESET & REBUILD SCRIPT FOR SUPABASE WITH INDEPENDENT AUTHENTICATION
--- All user accounts and passwords are stored in the custom public.app_users table.
+-- SAFE SUPABASE SCHEMA INITIALIZATION & UPDATE SCRIPT
+-- NON-DESTRUCTIVE: Preserves all existing tables and data (NO DROP TABLES).
+-- Run this in Supabase SQL Editor to set up or update your database schema safely.
 -- ==============================================================================
 
 -- Enable pgcrypto for password hashing
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- 1. Safely Drop All Existing Tables and Functions
-DROP TABLE IF EXISTS attendance CASCADE;
-DROP TABLE IF EXISTS overtime CASCADE;
-DROP TABLE IF EXISTS advances CASCADE;
-DROP TABLE IF EXISTS daily_wages CASCADE;
-DROP TABLE IF EXISTS staff CASCADE;
-DROP TABLE IF EXISTS store_profile CASCADE;
-DROP TABLE IF EXISTS keep_alive_pings CASCADE;
-DROP TABLE IF EXISTS public.user_profiles CASCADE;
-DROP TABLE IF EXISTS public.app_users CASCADE;
-
-DROP FUNCTION IF EXISTS update_timestamp_column CASCADE;
-DROP FUNCTION IF EXISTS ping_heartbeat CASCADE;
-DROP FUNCTION IF EXISTS public.app_login CASCADE;
-DROP FUNCTION IF EXISTS public.app_create_user CASCADE;
-DROP FUNCTION IF EXISTS public.app_change_password CASCADE;
-DROP FUNCTION IF EXISTS public.app_delete_user CASCADE;
-DROP FUNCTION IF EXISTS public.app_list_users CASCADE;
-DROP FUNCTION IF EXISTS public.handle_new_user CASCADE;
-DROP FUNCTION IF EXISTS public.admin_create_user CASCADE;
-DROP FUNCTION IF EXISTS public.admin_change_user_password CASCADE;
-DROP FUNCTION IF EXISTS public.admin_delete_user CASCADE;
-DROP FUNCTION IF EXISTS public.admin_list_users CASCADE;
-DROP FUNCTION IF EXISTS public.change_my_password CASCADE;
-DROP FUNCTION IF EXISTS public.get_my_profile CASCADE;
-
 -- ==============================================================================
--- 2. DEDICATED APP USERS TABLE (Authentication & Roles)
+-- 1. DEDICATED APP USERS TABLE (Authentication & Roles)
 -- ==============================================================================
-CREATE TABLE public.app_users (
+CREATE TABLE IF NOT EXISTS public.app_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
@@ -46,15 +21,15 @@ CREATE TABLE public.app_users (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_app_users_username ON public.app_users(LOWER(username));
-CREATE INDEX idx_app_users_role ON public.app_users(role);
+CREATE INDEX IF NOT EXISTS idx_app_users_username ON public.app_users(LOWER(username));
+CREATE INDEX IF NOT EXISTS idx_app_users_role ON public.app_users(role);
 
 -- ==============================================================================
--- 3. STAFF MASTER & RECORD TABLES
+-- 2. STAFF MASTER & RECORD TABLES
 -- ==============================================================================
 
 -- 1. Staff Master Table (Physical Restaurant Employees)
-CREATE TABLE staff (
+CREATE TABLE IF NOT EXISTS staff (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   dept TEXT NOT NULL DEFAULT 'Other',
@@ -67,12 +42,12 @@ CREATE TABLE staff (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_staff_dept ON staff(dept);
-CREATE INDEX idx_staff_outlet ON staff(outlet);
-CREATE INDEX idx_staff_status ON staff(status);
+CREATE INDEX IF NOT EXISTS idx_staff_dept ON staff(dept);
+CREATE INDEX IF NOT EXISTS idx_staff_outlet ON staff(outlet);
+CREATE INDEX IF NOT EXISTS idx_staff_status ON staff(status);
 
 -- 2. Daily Attendance Table (1 row per employee per date)
-CREATE TABLE attendance (
+CREATE TABLE IF NOT EXISTS attendance (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   staff_id TEXT NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
   date DATE NOT NULL,
@@ -82,11 +57,11 @@ CREATE TABLE attendance (
   CONSTRAINT uq_attendance_staff_date UNIQUE (staff_id, date)
 );
 
-CREATE INDEX idx_attendance_staff_date ON attendance(staff_id, date);
-CREATE INDEX idx_attendance_date ON attendance(date);
+CREATE INDEX IF NOT EXISTS idx_attendance_staff_date ON attendance(staff_id, date);
+CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 
 -- 3. Overtime / Over-Duty Table
-CREATE TABLE overtime (
+CREATE TABLE IF NOT EXISTS overtime (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   staff_id TEXT NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
   date DATE NOT NULL,
@@ -98,11 +73,11 @@ CREATE TABLE overtime (
   CONSTRAINT uq_overtime_staff_date UNIQUE (staff_id, date)
 );
 
-CREATE INDEX idx_overtime_staff_date ON overtime(staff_id, date);
-CREATE INDEX idx_overtime_date ON overtime(date);
+CREATE INDEX IF NOT EXISTS idx_overtime_staff_date ON overtime(staff_id, date);
+CREATE INDEX IF NOT EXISTS idx_overtime_date ON overtime(date);
 
 -- 4. Advances Table (Disbursed Cash by Date)
-CREATE TABLE advances (
+CREATE TABLE IF NOT EXISTS advances (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   staff_id TEXT NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
   date DATE NOT NULL,
@@ -113,11 +88,11 @@ CREATE TABLE advances (
   CONSTRAINT uq_advances_staff_date UNIQUE (staff_id, date)
 );
 
-CREATE INDEX idx_advances_staff_date ON advances(staff_id, date);
-CREATE INDEX idx_advances_date ON advances(date);
+CREATE INDEX IF NOT EXISTS idx_advances_staff_date ON advances(staff_id, date);
+CREATE INDEX IF NOT EXISTS idx_advances_date ON advances(date);
 
 -- 5. Daily Wages Table (Date-Specific Daily Wage Overrides)
-CREATE TABLE daily_wages (
+CREATE TABLE IF NOT EXISTS daily_wages (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   staff_id TEXT NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
   date DATE NOT NULL,
@@ -127,11 +102,11 @@ CREATE TABLE daily_wages (
   CONSTRAINT uq_daily_wages_staff_date UNIQUE (staff_id, date)
 );
 
-CREATE INDEX idx_daily_wages_staff_date ON daily_wages(staff_id, date);
-CREATE INDEX idx_daily_wages_date ON daily_wages(date);
+CREATE INDEX IF NOT EXISTS idx_daily_wages_staff_date ON daily_wages(staff_id, date);
+CREATE INDEX IF NOT EXISTS idx_daily_wages_date ON daily_wages(date);
 
 -- 6. Store Profile Table (Restaurant Branding, Outlets & Logos)
-CREATE TABLE store_profile (
+CREATE TABLE IF NOT EXISTS store_profile (
   id TEXT PRIMARY KEY DEFAULT 'default_store',
   name TEXT NOT NULL DEFAULT 'Hotel Bilal & Restaurant',
   address TEXT,
@@ -144,7 +119,7 @@ CREATE TABLE store_profile (
 );
 
 -- 7. Keep-Alive & Heartbeat Table
-CREATE TABLE keep_alive_pings (
+CREATE TABLE IF NOT EXISTS keep_alive_pings (
   id TEXT PRIMARY KEY DEFAULT 'primary_heartbeat',
   last_ping TIMESTAMPTZ DEFAULT NOW(),
   client_info TEXT DEFAULT 'attendance_app',
@@ -152,7 +127,7 @@ CREATE TABLE keep_alive_pings (
 );
 
 -- ==============================================================================
--- 4. AUTOMATIC TIMESTAMP TRIGGERS
+-- 3. AUTOMATIC TIMESTAMP TRIGGERS
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION update_timestamp_column()
 RETURNS TRIGGER AS $$
@@ -162,36 +137,29 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_app_users_updated_at
-BEFORE UPDATE ON public.app_users
-FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
+DROP TRIGGER IF EXISTS trg_app_users_updated_at ON public.app_users;
+CREATE TRIGGER trg_app_users_updated_at BEFORE UPDATE ON public.app_users FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 
-CREATE TRIGGER trg_staff_updated_at
-BEFORE UPDATE ON staff
-FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
+DROP TRIGGER IF EXISTS trg_staff_updated_at ON staff;
+CREATE TRIGGER trg_staff_updated_at BEFORE UPDATE ON staff FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 
-CREATE TRIGGER trg_attendance_updated_at
-BEFORE UPDATE ON attendance
-FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
+DROP TRIGGER IF EXISTS trg_attendance_updated_at ON attendance;
+CREATE TRIGGER trg_attendance_updated_at BEFORE UPDATE ON attendance FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 
-CREATE TRIGGER trg_overtime_updated_at
-BEFORE UPDATE ON overtime
-FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
+DROP TRIGGER IF EXISTS trg_overtime_updated_at ON overtime;
+CREATE TRIGGER trg_overtime_updated_at BEFORE UPDATE ON overtime FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 
-CREATE TRIGGER trg_advances_updated_at
-BEFORE UPDATE ON advances
-FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
+DROP TRIGGER IF EXISTS trg_advances_updated_at ON advances;
+CREATE TRIGGER trg_advances_updated_at BEFORE UPDATE ON advances FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 
-CREATE TRIGGER trg_daily_wages_updated_at
-BEFORE UPDATE ON daily_wages
-FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
+DROP TRIGGER IF EXISTS trg_daily_wages_updated_at ON daily_wages;
+CREATE TRIGGER trg_daily_wages_updated_at BEFORE UPDATE ON daily_wages FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 
-CREATE TRIGGER trg_store_profile_updated_at
-BEFORE UPDATE ON store_profile
-FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
+DROP TRIGGER IF EXISTS trg_store_profile_updated_at ON store_profile;
+CREATE TRIGGER trg_store_profile_updated_at BEFORE UPDATE ON store_profile FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 
 -- ==============================================================================
--- 5. ROW LEVEL SECURITY (RLS) & ACCESS POLICIES
+-- 4. ROW LEVEL SECURITY (RLS) & ACCESS POLICIES
 -- ==============================================================================
 ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
@@ -203,29 +171,42 @@ ALTER TABLE store_profile ENABLE ROW LEVEL SECURITY;
 ALTER TABLE keep_alive_pings ENABLE ROW LEVEL SECURITY;
 
 -- App Users Policies
-CREATE POLICY "Public app_users select safe" ON public.app_users
-FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public app_users select safe" ON public.app_users;
+CREATE POLICY "Public app_users select safe" ON public.app_users FOR SELECT USING (true);
 
-CREATE POLICY "Public app_users insert" ON public.app_users
-FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Public app_users insert" ON public.app_users;
+CREATE POLICY "Public app_users insert" ON public.app_users FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Public app_users update" ON public.app_users
-FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public app_users update" ON public.app_users;
+CREATE POLICY "Public app_users update" ON public.app_users FOR UPDATE USING (true) WITH CHECK (true);
 
-CREATE POLICY "Public app_users delete" ON public.app_users
-FOR DELETE USING (true);
+DROP POLICY IF EXISTS "Public app_users delete" ON public.app_users;
+CREATE POLICY "Public app_users delete" ON public.app_users FOR DELETE USING (true);
 
 -- Application Data Policies
+DROP POLICY IF EXISTS "Public staff all" ON staff;
 CREATE POLICY "Public staff all" ON staff FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public attendance all" ON attendance;
 CREATE POLICY "Public attendance all" ON attendance FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public overtime all" ON overtime;
 CREATE POLICY "Public overtime all" ON overtime FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public advances all" ON advances;
 CREATE POLICY "Public advances all" ON advances FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public daily_wages all" ON daily_wages;
 CREATE POLICY "Public daily_wages all" ON daily_wages FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public store_profile all" ON store_profile;
 CREATE POLICY "Public store_profile all" ON store_profile FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public keep_alive all" ON keep_alive_pings;
 CREATE POLICY "Public keep_alive all" ON keep_alive_pings FOR ALL USING (true) WITH CHECK (true);
 
 -- ==============================================================================
--- 6. AUTHENTICATION & USER MANAGEMENT RPC FUNCTIONS
+-- 5. AUTHENTICATION & USER MANAGEMENT RPC FUNCTIONS
 -- ==============================================================================
 
 -- 1. App Login (Verify Username & Password)
@@ -317,7 +298,6 @@ BEGIN
 
   hashed_pw := crypt(p_password, gen_salt('bf', 8));
 
-  -- Insert or update user
   INSERT INTO public.app_users (username, password_hash, display_name, role, outlet)
   VALUES (clean_uname, hashed_pw, clean_name, clean_role, clean_outlet)
   ON CONFLICT (username) DO UPDATE
@@ -426,10 +406,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 6. Heartbeat Function for Keep-Alive
 CREATE OR REPLACE FUNCTION ping_heartbeat()
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
   INSERT INTO keep_alive_pings (id, last_ping, client_info, ping_count)
   VALUES ('primary_heartbeat', NOW(), 'app_heartbeat', 1)
@@ -441,36 +418,33 @@ END;
 $$;
 
 -- ==============================================================================
--- 7. SUPABASE STORAGE BUCKET FOR ASSETS & LOGOS
+-- 6. SUPABASE STORAGE BUCKET FOR ASSETS & LOGOS
 -- ==============================================================================
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('store-assets', 'store-assets', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- Drop existing storage policies if re-running
 DROP POLICY IF EXISTS "Public Access store-assets" ON storage.objects;
-DROP POLICY IF EXISTS "Public Upload store-assets" ON storage.objects;
-DROP POLICY IF EXISTS "Public Update store-assets" ON storage.objects;
-DROP POLICY IF EXISTS "Public Delete store-assets" ON storage.objects;
-
--- Enable Public Read, Upload, Update, Delete for store-assets bucket
 CREATE POLICY "Public Access store-assets"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'store-assets');
 
+DROP POLICY IF EXISTS "Public Upload store-assets" ON storage.objects;
 CREATE POLICY "Public Upload store-assets"
 ON storage.objects FOR INSERT
 WITH CHECK (bucket_id = 'store-assets');
 
+DROP POLICY IF EXISTS "Public Update store-assets" ON storage.objects;
 CREATE POLICY "Public Update store-assets"
 ON storage.objects FOR UPDATE
 USING (bucket_id = 'store-assets');
 
+DROP POLICY IF EXISTS "Public Delete store-assets" ON storage.objects;
 CREATE POLICY "Public Delete store-assets"
 ON storage.objects FOR DELETE
 USING (bucket_id = 'store-assets');
 
 -- ==============================================================================
--- 8. INITIAL ADMIN CREATION EXAMPLE
+-- 7. INITIAL ADMIN CREATION EXAMPLE (Run in Supabase SQL Editor if needed)
 -- ==============================================================================
 -- SELECT public.app_create_user('admin', 'admin123456', 'Super Administrator', 'admin', 'All Branches');

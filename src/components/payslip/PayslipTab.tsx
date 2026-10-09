@@ -1,8 +1,17 @@
 import React, { useState } from 'react'
-import { Printer, Users, Receipt, Calendar, Download, FileSpreadsheet } from 'lucide-react'
+import {
+  Printer,
+  Users,
+  Receipt,
+  Calendar,
+  Download,
+  FileSpreadsheet,
+  Building2,
+  Briefcase,
+  IndianRupee
+} from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -26,6 +35,23 @@ interface PayslipTabProps {
   onMonthChange: (month: string) => void
 }
 
+const MONTHS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' }
+]
+
+const YEARS = ['2024', '2025', '2026', '2027', '2028', '2029', '2030']
+
 export const PayslipTab: React.FC<PayslipTabProps> = ({
   staffList,
   storeProfile,
@@ -36,6 +62,27 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
     return staffList[0]?.id || ''
   })
   const [isPrintingAll, setIsPrintingAll] = useState<boolean>(false)
+
+  // Parse Month and Year from payslipMonth (format: YYYY-MM)
+  const [currentYear, currentMonth] = (
+    payslipMonth || new Date().toISOString().slice(0, 7)
+  ).split('-')
+
+  const selectedYear = currentYear || new Date().getFullYear().toString()
+  const selectedMonth =
+    currentMonth || String(new Date().getMonth() + 1).padStart(2, '0')
+
+  const handleYearChange = (newYear: string | null) => {
+    if (newYear) {
+      onMonthChange(`${newYear}-${selectedMonth}`)
+    }
+  }
+
+  const handleMonthChange = (newMonth: string | null) => {
+    if (newMonth) {
+      onMonthChange(`${selectedYear}-${newMonth}`)
+    }
+  }
 
   const dates = monthRange(payslipMonth)
   const selectedStaff =
@@ -213,7 +260,7 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
           </tbody>
 
           <tfoot>
-            <tr className="bg-[#f1f6f3] dark:bg-[#24352d] font-bold text-xs border-t-2 border-[#dfe8e3] dark:border-[#3a4c43]">
+            <tr className="font-bold text-xs border-t-2 border-[#dfe8e3] dark:border-[#3a4c43]">
               <th
                 colSpan={2}
                 className="px-3 py-2.5 text-left text-[#162b26] dark:text-[#e5eee9] font-bold"
@@ -229,7 +276,7 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
               <th className="px-3 py-2.5 text-right font-mono text-[#162b26] dark:text-[#e5eee9] font-bold">
                 ₹{calc.advance.toLocaleString('en-IN')}
               </th>
-              <th className="px-3 py-2.5 text-right font-mono text-sm font-extrabold text-[#117a5b] dark:text-[#a8e5c7]">
+              <th className="px-3 py-2.5 text-right font-mono text-xs font-bold text-[#162b26] dark:text-[#e5eee9]">
                 ₹{calc.net.toLocaleString('en-IN')}
               </th>
             </tr>
@@ -239,40 +286,94 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
     )
   }
 
+  const selectedStaffCalc = selectedStaff ? calculateStaffPayroll(selectedStaff, dates) : null
+
   return (
     <div className="space-y-4">
       {/* Control Bar (hidden in print) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3.5 bg-card border border-border/80 rounded-xl shadow-xs print:hidden">
-        <div className="flex items-center flex-wrap gap-3">
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Payslip Month:</span>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 p-4 bg-card border border-border/80 rounded-xl shadow-xs print:hidden">
+        <div className="flex items-center flex-wrap gap-4">
+          {/* Month & Year shadcn UI Picker */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Month & Year:</span>
             </label>
-            <Input
-              type="month"
-              value={payslipMonth}
-              onChange={(e) => onMonthChange(e.target.value)}
-              className="h-9 w-40 bg-background border-border text-sm"
-            />
+            <div className="flex items-center gap-2">
+              <Select value={selectedMonth} onValueChange={handleMonthChange}>
+                <SelectTrigger className="h-9 min-w-[125px] bg-background border-border text-sm font-medium">
+                  <SelectValue placeholder="Month" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {MONTHS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedYear} onValueChange={handleYearChange}>
+                <SelectTrigger className="h-9 min-w-[90px] bg-background border-border text-sm font-medium">
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {YEARS.map((y) => (
+                    <SelectItem key={y} value={y}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-1 min-w-[200px]">
-            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" />
-              <span>Staff Member:</span>
+          {/* Staff Member Picker */}
+          <div className="space-y-1.5 min-w-[240px] sm:min-w-[300px]">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Select Employee:</span>
             </label>
             <Select
               value={selectedStaffId || (staffList[0]?.id || '')}
-              onValueChange={(val) => setSelectedStaffId(val as string)}
+              onValueChange={(val) => {
+                if (val) setSelectedStaffId(val)
+              }}
             >
               <SelectTrigger className="w-full h-9 bg-background border-border text-sm font-medium">
-                <SelectValue placeholder="Select Staff Member" />
+                {selectedStaff ? (
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                      #{selectedStaff.id}
+                    </span>
+                    <span className="truncate font-medium">{selectedStaff.name}</span>
+                    <span className="text-xs text-muted-foreground ml-auto hidden sm:inline-block">
+                      {selectedStaff.dept}
+                    </span>
+                  </div>
+                ) : (
+                  <SelectValue placeholder="Select Staff Member" />
+                )}
               </SelectTrigger>
-              <SelectContent className="max-h-64">
+              <SelectContent className="max-h-64 min-w-[320px]">
                 {staffList.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.id} - {s.name} ({s.dept})
+                    <div className="flex items-center justify-between w-full gap-3">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50">
+                          #{s.id}
+                        </span>
+                        <span className="font-medium text-foreground truncate">{s.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0 text-xs text-muted-foreground">
+                        <span>{s.dept}</span>
+                        {s.outlet && (
+                          <span className="text-[10px] px-1 py-0.2 rounded bg-muted/60">
+                            {s.outlet}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -280,6 +381,7 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
           </div>
         </div>
 
+        {/* Action Buttons */}
         <div className="flex items-center flex-wrap gap-2 pt-2 lg:pt-0">
           <Button
             onClick={handlePrintSingle}
@@ -319,6 +421,71 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* Staff Preview Header Banner (shows ID, name, designation, dept, wages, net summary) */}
+      {!isPrintingAll && selectedStaff && selectedStaffCalc && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-card border border-border/80 rounded-xl shadow-xs print:hidden">
+          {/* Employee Info Card */}
+          <div className="flex items-center gap-3.5 md:col-span-2">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold text-lg flex items-center justify-center shrink-0">
+              {selectedStaff.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30">
+                  ID #{selectedStaff.id}
+                </span>
+                <span className="font-bold text-base text-foreground truncate">
+                  {selectedStaff.name}
+                </span>
+                {selectedStaff.designation && (
+                  <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                    {selectedStaff.designation}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  {selectedStaff.dept}
+                </span>
+                {selectedStaff.outlet && (
+                  <span className="flex items-center gap-1">
+                    <Building2 className="w-3.5 h-3.5" />
+                    {selectedStaff.outlet}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <IndianRupee className="w-3.5 h-3.5" />
+                  ₹{Number(selectedStaff.wage || 0).toLocaleString('en-IN')} / day
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Month Stats */}
+          <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 md:border-l border-border/60 pt-2.5 md:pt-0 md:pl-4">
+            <div className="text-left md:text-right">
+              <div className="text-xs text-muted-foreground font-medium">Days Attended</div>
+              <div className="text-sm font-bold text-foreground">
+                <span className="text-emerald-600 dark:text-emerald-400">{selectedStaffCalc.full}P</span>
+                {selectedStaffCalc.half > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400 ml-1.5">{selectedStaffCalc.half}H</span>
+                )}
+                {selectedStaffCalc.abs > 0 && (
+                  <span className="text-rose-600 dark:text-rose-400 ml-1.5">{selectedStaffCalc.abs}A</span>
+                )}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground font-medium">Month Net Pay</div>
+              <div className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                ₹{selectedStaffCalc.net.toLocaleString('en-IN')}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Single Payslip View */}
       {!isPrintingAll && selectedStaff ? (

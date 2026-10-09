@@ -202,8 +202,8 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
                   )}
                   <span>{currentUserProfile.role}</span>
                 </span>
-                <span className="text-[10px] text-muted-foreground truncate">
-                  {currentUserProfile.outlet || 'Main Branch'}
+                <span className="text-[10px] text-muted-foreground truncate font-mono">
+                  @{currentUserProfile.username}
                 </span>
               </div>
             </div>

@@ -52,8 +52,7 @@ interface SettingsTabProps {
   onAdminCreateUser?: (
     username: string,
     password: string,
-    name: string,
-    outlet: string
+    name: string
   ) => Promise<{ success: boolean; error?: string }>
   onAdminChangePassword?: (
     userId: string,
@@ -769,7 +768,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           <UserManagementSection
             currentUserProfile={currentUserProfile}
             isAdmin={isAdmin}
-            outlets={outlets}
             fetchUsersList={fetchUsersList}
             onAdminCreateUser={onAdminCreateUser}
             onAdminChangePassword={onAdminChangePassword}
