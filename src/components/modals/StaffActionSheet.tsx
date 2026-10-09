@@ -56,15 +56,18 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
       const otAmt = ot.amount !== undefined ? ot.amount : ''
       setOtInput(String(otAmt || ''))
       setAdvInput(String(staff.advances[currentDate] || ''))
-      setWageInput(String(staff.wage || ''))
+      setWageInput(staff.wage && String(staff.wage) !== '0' ? String(staff.wage) : '')
     }
   }, [staff, currentDate, isOpen])
 
   if (!staff) return null
 
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const isFutureDate = currentDate > todayStr
   const currentMark = staff.attendance[currentDate] || ''
 
   const handleMark = (mark: AttendanceMark) => {
+    if (isFutureDate) return
     onUpdateAttendance(staff.id, currentDate, mark)
   }
 
@@ -126,43 +129,49 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
+              disabled={isFutureDate}
               onClick={() => handleMark('P')}
               className={cn(
-                'flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all',
+                'flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none',
+                isFutureDate && 'opacity-60 cursor-not-allowed',
                 currentMark === 'P'
                   ? 'bg-emerald-100 dark:bg-emerald-950/80 border-emerald-500 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500'
                   : 'border-border bg-card text-foreground hover:bg-muted'
               )}
             >
-              <CheckCircle2 className="w-5 h-5 mb-1 text-emerald-600" />
+              <CheckCircle2 className="w-5 h-5 mb-1 text-emerald-600 dark:text-emerald-400" />
               <span>Present (P)</span>
             </button>
 
             <button
               type="button"
+              disabled={isFutureDate}
               onClick={() => handleMark('H')}
               className={cn(
-                'flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all',
+                'flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none',
+                isFutureDate && 'opacity-60 cursor-not-allowed',
                 currentMark === 'H'
                   ? 'bg-amber-100 dark:bg-amber-950/80 border-amber-500 text-amber-800 dark:text-amber-200 ring-2 ring-amber-500'
                   : 'border-border bg-card text-foreground hover:bg-muted'
               )}
             >
-              <Clock className="w-5 h-5 mb-1 text-amber-600" />
+              <Clock className="w-5 h-5 mb-1 text-amber-600 dark:text-amber-400" />
               <span>Half Day (H)</span>
             </button>
 
             <button
               type="button"
+              disabled={isFutureDate}
               onClick={() => handleMark('A')}
               className={cn(
-                'flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all',
+                'flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none',
+                isFutureDate && 'opacity-60 cursor-not-allowed',
                 currentMark === 'A'
                   ? 'bg-rose-100 dark:bg-rose-950/80 border-rose-500 text-rose-800 dark:text-rose-200 ring-2 ring-rose-500'
                   : 'border-border bg-card text-foreground hover:bg-muted'
               )}
             >
-              <XCircle className="w-5 h-5 mb-1 text-rose-600" />
+              <XCircle className="w-5 h-5 mb-1 text-rose-600 dark:text-rose-400" />
               <span>Absent (A)</span>
             </button>
           </div>

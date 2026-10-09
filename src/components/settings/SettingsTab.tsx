@@ -1,27 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  Building2,
   Plus,
   Trash2,
   Upload,
-  Image as ImageIcon,
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  Cloud,
   Phone,
   MapPin,
-  Store,
-  Users,
   Edit2,
   Check,
   X,
-  Database,
   FileSpreadsheet,
-  Activity,
   ChevronRight,
-  ChevronLeft,
-  Settings as SettingsIcon
+  ChevronLeft
 } from 'lucide-react'
 import {
   Card,
@@ -41,7 +33,7 @@ import { uploadImage } from '@/lib/storageUtils'
 import { cn } from '@/lib/utils'
 import { App as CapApp } from '@capacitor/app'
 
-export type SettingsCategory = 'general' | 'outlets' | 'users' | 'database'
+export type SettingsCategory = 'branding' | 'outlets' | 'users' | 'sync'
 
 interface SettingsTabProps {
   storeProfile: StoreProfile
@@ -74,37 +66,27 @@ interface SettingsTabProps {
 const CATEGORIES: {
   id: SettingsCategory
   label: string
-  shortLabel: string
   description: string
-  icon: React.FC<{ className?: string }>
 }[] = [
   {
-    id: 'general',
-    label: 'General & Branding',
-    shortLabel: 'Branding',
-    description: 'Name, address, contact & main restaurant logo',
-    icon: Store
+    id: 'branding',
+    label: 'Branding',
+    description: 'Logo, restaurant name & contact details'
   },
   {
     id: 'outlets',
-    label: 'Outlets & Branches',
-    shortLabel: 'Branches',
-    description: 'Manage store locations and outlet-specific logos',
-    icon: Building2
+    label: 'Outlets',
+    description: 'Branches, outlet logos & employee counts'
   },
   {
     id: 'users',
-    label: 'App Users & Access',
-    shortLabel: 'Users & Roles',
-    description: 'Manage app login credentials, reset passwords & roles',
-    icon: Users
+    label: 'Users',
+    description: 'App login credentials, roles & permissions'
   },
   {
-    id: 'database',
-    label: 'Cloud Sync & Database',
-    shortLabel: 'Cloud Sync',
-    description: 'Supabase real-time connection & backup status',
-    icon: Cloud
+    id: 'sync',
+    label: 'Sync',
+    description: 'Supabase cloud database & master backup'
   }
 ]
 
@@ -127,9 +109,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   supabaseLatency = null
 }) => {
   // Desktop Active Category
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('general')
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('branding')
 
-  // Mobile Active Subpage (null means showing Mobile Settings Hub)
+  // Mobile Active Subpage (null means showing Mobile Hub)
   const [mobileSubpage, setMobileSubpage] = useState<SettingsCategory | null>(null)
 
   // Local Form States
@@ -207,7 +189,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           setStatusMessage(res.message || 'Auto-save failed')
         } else {
           setSaveStatus('saved')
-          setStatusMessage(isSupabaseConnected ? 'Synced to Cloud' : 'Saved locally')
+          setStatusMessage(isSupabaseConnected ? 'Synced to cloud' : 'Saved locally')
         }
       } catch (err: unknown) {
         setSaveStatus('error')
@@ -243,7 +225,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         outletLogos: outletLogos.filter((l) => l.name.trim() && l.logo)
       }
       triggerAutoSave(updated)
-    }, 600)
+    }, 500)
   }
 
   // Instant Auto-Save for Direct Actions (Logos, Outlets)
@@ -400,21 +382,21 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const AutoSaveStatusBadge = () => (
     <div className="flex items-center gap-1.5 text-xs font-semibold">
       {saveStatus === 'saving' && (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[11px] animate-pulse">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border text-[11px] font-mono">
           <RefreshCw className="w-3 h-3 animate-spin" />
-          <span>Saving changes...</span>
+          <span>Saving...</span>
         </span>
       )}
       {saveStatus === 'saved' && (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-[11px] animate-fade-in">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-[11px] animate-fade-in font-medium">
           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-          <span>{statusMessage || 'All changes saved'}</span>
+          <span>{statusMessage || 'Saved'}</span>
         </span>
       )}
       {saveStatus === 'error' && (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 text-[11px]">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 text-[11px] font-medium">
           <AlertCircle className="w-3 h-3 text-rose-600" />
-          <span>{statusMessage || 'Save failed'}</span>
+          <span>{statusMessage || 'Save error'}</span>
         </span>
       )}
     </div>
@@ -423,23 +405,22 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   // Subpage Contents
   const renderSubpageContent = (category: SettingsCategory) => {
     switch (category) {
-      case 'general':
+      case 'branding':
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 animate-fade-in">
             {/* Main Logo Card */}
             <div className="lg:col-span-1 space-y-4">
               <Card className="border-border/80 shadow-xs">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4 text-emerald-600" />
-                    <span>Restaurant Main Logo</span>
+                  <CardTitle className="text-sm font-semibold">
+                    Restaurant Logo
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Appears on headers, reports, and printed payslips
+                    Theme accent color is dynamically picked from this logo
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-border bg-muted/20 text-center relative group">
+                <CardContent className="space-y-3">
+                  <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-dashed border-border bg-muted/20 text-center relative">
                     {logo ? (
                       <div className="space-y-3 flex flex-col items-center">
                         <img
@@ -449,7 +430,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                         />
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={handleRemoveMainLogo}
                           className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
@@ -459,18 +440,18 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                       </div>
                     ) : (
                       <div className="space-y-2 py-3 flex flex-col items-center">
-                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                          <Upload className="w-5 h-5" />
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                          <Upload className="w-4 h-4" />
                         </div>
                         <div className="text-xs text-muted-foreground">
                           <label
                             htmlFor="main-logo-input"
-                            className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                            className="font-semibold text-foreground hover:underline cursor-pointer"
                           >
                             Upload an image
                           </label>
                           <p className="text-[10px] text-muted-foreground mt-0.5">
-                            PNG, JPG or SVG (Max 2MB)
+                            PNG, JPG or SVG
                           </p>
                         </div>
                       </div>
@@ -504,17 +485,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             <div className="lg:col-span-2 space-y-4">
               <Card className="border-border/80 shadow-xs">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Store className="w-4 h-4 text-emerald-600" />
-                    <span>Company & Business Information</span>
+                  <CardTitle className="text-sm font-semibold">
+                    Business Details
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Updates automatically on blur or input without requiring manual save
+                    Information displayed on monthly payslips and headers
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="store-name" className="text-xs font-semibold">
+                    <Label htmlFor="store-name" className="text-xs font-medium">
                       Restaurant / Business Name
                     </Label>
                     <Input
@@ -528,9 +508,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="store-phone" className="text-xs font-semibold flex items-center gap-1.5">
+                      <Label htmlFor="store-phone" className="text-xs font-medium flex items-center gap-1.5">
                         <Phone className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>Contact Phone Number</span>
+                        <span>Phone Number</span>
                       </Label>
                       <Input
                         id="store-phone"
@@ -542,9 +522,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label htmlFor="store-address" className="text-xs font-semibold flex items-center gap-1.5">
+                      <Label htmlFor="store-address" className="text-xs font-medium flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>Business Address / Location</span>
+                        <span>Address</span>
                       </Label>
                       <Input
                         id="store-address"
@@ -557,7 +537,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   </div>
 
                   <div className="pt-2 border-t border-border/70 flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="text-[11px]">All changes are automatically synced to Supabase.</span>
+                    <span className="text-[11px]">Changes auto-save in real-time.</span>
                     <AutoSaveStatusBadge />
                   </div>
                 </CardContent>
@@ -573,22 +553,21 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               <CardHeader className="pb-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <CardTitle className="text-sm font-bold flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-emerald-600" />
-                      <span>Outlets & Branches Management</span>
+                    <CardTitle className="text-sm font-semibold">
+                      Outlets & Branches
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Add branches, rename outlets, and assign custom logos. Changes auto-save instantly.
+                      Manage branch locations and branch-specific logos
                     </CardDescription>
                   </div>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-muted text-muted-foreground w-fit">
-                    {outlets.length} {outlets.length === 1 ? 'Outlet' : 'Outlets'} Active
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground w-fit font-mono">
+                    {outlets.length} {outlets.length === 1 ? 'branch' : 'branches'}
                   </span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Add New Outlet Input Box */}
-                <div className="flex items-center gap-2 p-3 bg-muted/30 border border-border/80 rounded-xl">
+                <div className="flex items-center gap-2 p-2.5 bg-muted/30 border border-border/80 rounded-xl">
                   <Input
                     value={newOutletName}
                     onChange={(e) => setNewOutletName(e.target.value)}
@@ -598,17 +577,17 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                         handleAddOutlet()
                       }
                     }}
-                    placeholder="Enter new outlet name (e.g. Express Counter)"
-                    className="h-9 bg-background text-sm"
+                    placeholder="Enter branch name (e.g. Express Counter)"
+                    className="h-8.5 bg-background text-sm"
                   />
                   <Button
                     type="button"
                     onClick={handleAddOutlet}
                     disabled={!newOutletName.trim()}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-9 px-3.5 shrink-0"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8.5 px-3.5 shrink-0 shadow-xs"
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" />
-                    <span>Add Outlet</span>
+                    <span>Add Branch</span>
                   </Button>
                 </div>
 
@@ -623,10 +602,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     return (
                       <div
                         key={outletName}
-                        className="p-3.5 rounded-xl border border-border/80 bg-card hover:border-emerald-500/40 transition-all flex flex-col justify-between gap-3 shadow-2xs"
+                        className="p-3.5 rounded-xl border border-border/80 bg-card hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs"
                       >
                         <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden relative">
+                          <div className="w-10 h-10 rounded-xl bg-muted/40 border border-border flex items-center justify-center shrink-0 overflow-hidden relative">
                             {outletLogoObj?.logo ? (
                               <img
                                 src={outletLogoObj.logo}
@@ -634,7 +613,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                                 className="w-full h-full object-contain p-1"
                               />
                             ) : (
-                              <Building2 className="w-5 h-5 text-muted-foreground" />
+                              <span className="text-xs font-bold text-muted-foreground uppercase">
+                                {outletName.slice(0, 2)}
+                              </span>
                             )}
                           </div>
 
@@ -677,7 +658,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleStartEditOutlet(outletName)}
-                                  className="text-muted-foreground hover:text-emerald-600 p-0.5 rounded"
+                                  className="text-muted-foreground hover:text-foreground p-0.5 rounded"
                                   title="Rename Outlet"
                                 >
                                   <Edit2 className="w-3 h-3" />
@@ -685,13 +666,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                               </div>
                             )}
 
-                            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium mt-1">
-                              <Users className="w-3 h-3" />
-                              <span>
-                                {assignedStaffCount}{' '}
-                                {assignedStaffCount === 1 ? 'employee' : 'employees'} assigned
-                              </span>
-                            </div>
+                            <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                              {assignedStaffCount} {assignedStaffCount === 1 ? 'employee' : 'employees'} assigned
+                            </p>
                           </div>
                         </div>
 
@@ -770,18 +747,17 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           )
         )
 
-      case 'database':
+      case 'sync':
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 animate-fade-in">
             {/* Cloud Sync Status */}
             <Card className="border-border/80 shadow-xs">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Database className="w-4 h-4 text-emerald-600" />
-                  <span>Supabase Real-Time Cloud Database</span>
+                <CardTitle className="text-sm font-semibold">
+                  Supabase Cloud Database
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Live multi-device database connection and latency status
+                  Real-time synchronization status and latency
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -789,28 +765,28 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   <div className="flex items-center gap-2.5">
                     <span
                       className={cn(
-                        'w-3 h-3 rounded-full ring-4',
+                        'w-2.5 h-2.5 rounded-full ring-2',
                         isSupabaseConnected
                           ? 'bg-emerald-500 ring-emerald-500/20'
                           : 'bg-amber-500 ring-amber-500/20'
                       )}
                     />
                     <div>
-                      <p className="text-xs font-bold text-foreground">
+                      <p className="text-xs font-semibold text-foreground">
                         {isSupabaseConnected
-                          ? 'Connected & Live Sync Active'
-                          : 'Offline Mode (Local Storage)'}
+                          ? 'Live Connection Active'
+                          : 'Offline Mode'}
                       </p>
                       <p className="text-[11px] text-muted-foreground">
                         {isSupabaseConnected
-                          ? 'Changes automatically sync with authenticated sessions'
-                          : 'Running on local browser cache'}
+                          ? 'Authenticated records synchronize in real-time'
+                          : 'Using local cached database'}
                       </p>
                     </div>
                   </div>
 
                   {supabaseLatency !== null && (
-                    <span className="font-mono text-xs font-bold px-2 py-1 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                    <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-muted text-foreground">
                       {supabaseLatency}ms
                     </span>
                   )}
@@ -824,7 +800,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                       size="sm"
                       onClick={onManualSync}
                       disabled={isSyncing}
-                      className="flex-1 h-9 text-xs font-semibold"
+                      className="flex-1 h-8.5 text-xs font-semibold"
                     >
                       <RefreshCw
                         className={cn(
@@ -832,7 +808,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                           isSyncing && 'animate-spin text-emerald-600'
                         )}
                       />
-                      <span>Force Push to Cloud</span>
+                      <span>Force Push</span>
                     </Button>
                   )}
 
@@ -843,9 +819,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                       size="sm"
                       onClick={onPullFromSupabase}
                       disabled={isSyncing}
-                      className="flex-1 h-9 text-xs font-semibold"
+                      className="flex-1 h-8.5 text-xs font-semibold"
                     >
-                      <Cloud className="w-3.5 h-3.5 mr-1.5 text-teal-600" />
                       <span>Pull from Cloud</span>
                     </Button>
                   )}
@@ -856,23 +831,22 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             {/* Backup & Keep-Alive Monitoring */}
             <Card className="border-border/80 shadow-xs">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-600" />
-                  <span>Keep-Alive Heartbeat & Data Export</span>
+                <CardTitle className="text-sm font-semibold">
+                  Data Backup & Export
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Export period records or verify automatic keep-alive pings
+                  Export master payroll records or verify uptime keep-alive
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2 p-3 rounded-xl bg-muted/20 border border-border/80 text-xs">
                   <div className="flex items-center justify-between font-medium">
-                    <span className="text-muted-foreground">Database Ping Frequency:</span>
-                    <span className="font-bold text-foreground">Every 4 minutes</span>
+                    <span className="text-muted-foreground">Keep-Alive Heartbeat:</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Active (Every 4 min)</span>
                   </div>
                   <div className="flex items-center justify-between font-medium">
-                    <span className="text-muted-foreground">Pause Inactivity Prevention:</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">Enabled</span>
+                    <span className="text-muted-foreground">Supabase Pause Prevention:</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Enabled</span>
                   </div>
                 </div>
 
@@ -884,10 +858,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     const dates = [new Date().toISOString().split('T')[0]]
                     exportPayrollCsv(staffList, dates)
                   }}
-                  className="w-full h-9 text-xs font-semibold"
+                  className="w-full h-8.5 text-xs font-semibold"
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
-                  <span>Export Master Payroll Backup (CSV)</span>
+                  <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                  <span>Export Master Payroll (CSV)</span>
                 </Button>
               </CardContent>
             </Card>
@@ -905,20 +879,20 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         {/* If Mobile Subpage is OPEN -> Show Subpage View with Back Header */}
         {mobileSubpage ? (
           <div className="space-y-3 animate-fade-in">
-            {/* Top Sticky Back Navigation Bar */}
-            <div className="flex items-center justify-between p-3 bg-card border border-border/80 rounded-xl shadow-xs sticky top-0 z-10 backdrop-blur-md">
+            {/* Top Back Navigation Bar */}
+            <div className="flex items-center justify-between p-3 bg-card border border-border/80 rounded-xl shadow-2xs sticky top-0 z-10 backdrop-blur-md">
               <button
                 type="button"
                 onClick={() => setMobileSubpage(null)}
-                className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition-opacity"
+                className="flex items-center gap-1.5 text-xs font-semibold text-foreground hover:opacity-80 transition-opacity"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4 text-muted-foreground" />
                 <span>Settings</span>
               </button>
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-foreground">
-                  {CATEGORIES.find((c) => c.id === mobileSubpage)?.shortLabel}
+                  {CATEGORIES.find((c) => c.id === mobileSubpage)?.label}
                 </span>
                 <AutoSaveStatusBadge />
               </div>
@@ -930,60 +904,47 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         ) : (
           /* Mobile Settings Hub Menu */
           <div className="space-y-3 animate-fade-in">
-            {/* Hub Header */}
-            <div className="p-4 bg-card border border-border/80 rounded-2xl shadow-xs flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                  <SettingsIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-foreground">Settings & Preferences</h2>
-                  <p className="text-[11px] text-muted-foreground">{name || 'Hotel Bilal & Restaurant'}</p>
-                </div>
+            {/* Hub Header Card */}
+            <div className="p-4 bg-card border border-border/80 rounded-xl shadow-2xs flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-foreground">Settings</h2>
+                <p className="text-[11px] text-muted-foreground">{name || 'Hotel Bilal & Restaurant'}</p>
               </div>
               <AutoSaveStatusBadge />
             </div>
 
-            {/* Category Navigation Menu Items */}
-            <div className="space-y-2">
+            {/* Category Navigation Menu Items in Vercel List Group Style */}
+            <div className="rounded-xl border border-border/80 bg-card overflow-hidden divide-y divide-border/60 shadow-2xs">
               {CATEGORIES.map((cat) => {
-                const Icon = cat.icon
                 return (
                   <button
                     key={cat.id}
                     type="button"
                     onClick={() => setMobileSubpage(cat.id)}
-                    className="w-full p-3.5 rounded-xl border border-border/80 bg-card hover:bg-muted/40 transition-all flex items-center justify-between gap-3 text-left shadow-2xs"
+                    className="w-full p-3.5 hover:bg-muted/30 transition-colors flex items-center justify-between gap-3 text-left"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                        <Icon className="w-4.5 h-4.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-foreground leading-tight">{cat.label}</p>
-                        <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                          {cat.description}
-                        </p>
-                      </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground leading-tight">{cat.label}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {cat.description}
+                      </p>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       {cat.id === 'outlets' && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                          {outlets.length} {outlets.length === 1 ? 'branch' : 'branches'}
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          {outlets.length}
                         </span>
                       )}
-                      {cat.id === 'database' && (
+                      {cat.id === 'sync' && (
                         <span
                           className={cn(
-                            'w-2 h-2 rounded-full ring-2',
-                            isSupabaseConnected
-                              ? 'bg-emerald-500 ring-emerald-500/20'
-                              : 'bg-amber-500 ring-amber-500/20'
+                            'w-2 h-2 rounded-full',
+                            isSupabaseConnected ? 'bg-emerald-500' : 'bg-amber-500'
                           )}
                         />
                       )}
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      <ChevronRight className="w-4 h-4 text-muted-foreground/60" />
                     </div>
                   </button>
                 )
@@ -995,97 +956,62 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
       {/* ------------------------------------------------------------- */}
       {/* 2. DESKTOP LAYOUT (>= md screen)                              */}
-      {/* Mini Side Navigation + Active Content Subpage                 */}
+      {/* Sidebar matching DesktopSidebar.tsx style + Active Content    */}
       {/* ------------------------------------------------------------- */}
-      <div className="hidden md:flex gap-6 items-start">
-        {/* Left Column: Mini Side Navigation */}
-        <div className="w-72 lg:w-80 shrink-0 space-y-3">
-          <div className="p-3.5 bg-card border border-border/80 rounded-2xl shadow-xs">
-            <div className="flex items-center gap-2.5 pb-3 border-b border-border/70">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <SettingsIcon className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-xs font-bold text-foreground">Settings Navigation</h2>
-                <p className="text-[10px] text-muted-foreground">Automatic cloud sync enabled</p>
-              </div>
-            </div>
+      <div className="hidden md:flex gap-5 items-start flex-1 w-full min-h-0">
+        {/* Left Column: Mini Side Navigation (exact style as sidebar) */}
+        <div className="w-56 lg:w-64 shrink-0 space-y-1 bg-card border border-border/80 rounded-2xl p-3 shadow-xs">
+          <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Settings Menu
+          </div>
 
-            <nav className="space-y-1.5 pt-3">
-              {CATEGORIES.map((cat) => {
-                const Icon = cat.icon
-                const isActive = activeCategory === cat.id
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setActiveCategory(cat.id)}
-                    className={cn(
-                      'w-full p-2.5 rounded-xl border text-left transition-all duration-150 flex items-center justify-between gap-2.5 cursor-pointer',
-                      isActive
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                        : 'bg-transparent hover:bg-muted/50 border-transparent text-foreground'
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
+          <nav className="space-y-1">
+            {CATEGORIES.map((cat) => {
+              const isActive = activeCategory === cat.id
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={cn(
+                    'w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer',
+                    isActive
+                      ? 'bg-emerald-600 text-white shadow-sm font-bold scale-[1.01]'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  )}
+                >
+                  <span className="truncate">{cat.label}</span>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {cat.id === 'outlets' && (
+                      <span
                         className={cn(
-                          'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                          'text-[10px] font-mono px-1.5 py-0.2 rounded',
                           isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
                         )}
                       >
-                        <Icon className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold leading-tight truncate">{cat.label}</p>
-                        <p
-                          className={cn(
-                            'text-[10px] truncate',
-                            isActive ? 'text-white/80' : 'text-muted-foreground'
-                          )}
-                        >
-                          {cat.shortLabel}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 flex items-center gap-1.5">
-                      {cat.id === 'outlets' && (
-                        <span
-                          className={cn(
-                            'text-[10px] font-bold px-1.5 py-0.2 rounded',
-                            isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
-                          )}
-                        >
-                          {outlets.length}
-                        </span>
-                      )}
-                      {cat.id === 'database' && (
-                        <span
-                          className={cn(
-                            'w-2 h-2 rounded-full ring-2',
-                            isSupabaseConnected
-                              ? isActive
-                                ? 'bg-emerald-200 ring-white/40'
-                                : 'bg-emerald-500 ring-emerald-500/20'
-                              : isActive
-                              ? 'bg-amber-300 ring-white/40'
-                              : 'bg-amber-500 ring-amber-500/20'
-                          )}
-                        />
-                      )}
-                      <ChevronRight
+                        {outlets.length}
+                      </span>
+                    )}
+                    {cat.id === 'sync' && (
+                      <span
                         className={cn(
-                          'w-3.5 h-3.5',
-                          isActive ? 'text-white/70' : 'text-muted-foreground/50'
+                          'w-2 h-2 rounded-full',
+                          isSupabaseConnected
+                            ? isActive
+                              ? 'bg-white'
+                              : 'bg-emerald-500'
+                            : isActive
+                            ? 'bg-white'
+                            : 'bg-amber-500'
                         )}
                       />
-                    </div>
-                  </button>
-                )
-              })}
-            </nav>
-          </div>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </nav>
         </div>
 
         {/* Right Column: Active Subpage Content */}

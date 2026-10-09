@@ -93,7 +93,7 @@ export async function fetchStaffFromSupabase(): Promise<{
         outlet: row.outlet || 'Main Branch',
         designation: row.designation || '-',
         status: row.status || 'Working',
-        wage: row.wage !== null && row.wage !== undefined ? String(row.wage) : '0',
+        wage: row.wage !== null && row.wage !== undefined && String(row.wage) !== '0' ? String(row.wage) : '',
         salaryChanges: Boolean(row.salary_changes ?? row.salaryChanges),
         attendance: attendanceMap[id] || {},
         overtime: overtimeMap[id] || {},

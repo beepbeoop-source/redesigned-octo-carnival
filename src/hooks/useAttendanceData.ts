@@ -50,11 +50,13 @@ export function useAttendanceData() {
 
   // Date states
   const [fromDate, setFromDate] = useState<string>(() => {
-    return localStorage.getItem(FROM_KEY) || today
+    const saved = localStorage.getItem(FROM_KEY) || today
+    return saved > today ? today : saved
   })
 
   const [toDate, setToDate] = useState<string>(() => {
-    return localStorage.getItem(TO_KEY) || today
+    const saved = localStorage.getItem(TO_KEY) || today
+    return saved > today ? today : saved
   })
 
   const [entryDate, setEntryDate] = useState<string>(today)
@@ -83,7 +85,10 @@ export function useAttendanceData() {
       if (saved) {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed)) {
-          return parsed
+          return parsed.map((s) => ({
+            ...s,
+            wage: s.wage && String(s.wage) !== '0' ? String(s.wage) : ''
+          }))
         }
       }
     } catch {
@@ -225,7 +230,9 @@ export function useAttendanceData() {
   // Calculate dates based on active tab
   const activeDates = useMemo(() => {
     if (activeTab === 'attendance') {
-      return makeDates(fromDate, toDate) || [today]
+      const raw = makeDates(fromDate, toDate) || [today]
+      const filtered = raw.filter((d) => d <= today)
+      return filtered.length > 0 ? filtered : [today]
     }
     if (activeTab === 'payslip') {
       return monthRange(payslipMonth)
@@ -324,16 +331,18 @@ export function useAttendanceData() {
 
   // Period handler
   const handleSetPeriod = useCallback((start: string, end: string): boolean => {
-    const dates = makeDates(start, end)
+    const validEnd = end > today ? today : end
+    const validStart = start > validEnd ? validEnd : start
+    const dates = makeDates(validStart, validEnd)
     if (!dates) {
       return false
     }
-    setFromDate(start)
-    setToDate(end)
-    localStorage.setItem(FROM_KEY, start)
-    localStorage.setItem(TO_KEY, end)
+    setFromDate(validStart)
+    setToDate(validEnd)
+    localStorage.setItem(FROM_KEY, validStart)
+    localStorage.setItem(TO_KEY, validEnd)
     return true
-  }, [])
+  }, [today])
 
   const handleSetPayslipMonth = useCallback((month: string) => {
     setPayslipMonth(month)
@@ -363,7 +372,8 @@ export function useAttendanceData() {
     setStaffList((prev) =>
       prev.map((staff) => {
         if (staff.id === id) {
-          const updated = { ...staff, wage }
+          const sanitizedWage = wage === 0 || wage === '0' ? '' : wage
+          const updated = { ...staff, wage: sanitizedWage }
           syncStaffProfile(updated)
           return updated
         }

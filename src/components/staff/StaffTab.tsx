@@ -95,7 +95,7 @@ export const StaffTab: React.FC<StaffTabProps> = ({
 
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50">
                   <span className="text-muted-foreground">
-                    Wage: <strong>{formatCurrency(Number(staff.wage || 0))}</strong>
+                    Wage: <strong>{staff.wage && Number(staff.wage) > 0 ? formatCurrency(Number(staff.wage)) : '—'}</strong>
                   </span>
                   <div className="flex items-center gap-1">
                     <Button
@@ -191,7 +191,7 @@ export const StaffTab: React.FC<StaffTabProps> = ({
                         {staff.salaryChanges ? 'Changes by date' : 'Fixed daily'}
                       </TableCell>
                       <TableCell className="text-right text-xs sm:text-sm font-semibold">
-                        {formatCurrency(Number(staff.wage || 0))}
+                        {staff.wage && Number(staff.wage) > 0 ? formatCurrency(Number(staff.wage)) : '—'}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">

@@ -11,7 +11,8 @@ import {
   TableRow
 } from '@/components/ui/table'
 import type { Staff } from '@/types/attendance'
-import { formatDate, formatCurrency } from '@/lib/attendanceUtils'
+import { formatDate, formatCurrency, localToday } from '@/lib/attendanceUtils'
+import { DatePicker } from '@/components/ui/date-picker'
 import { cn } from '@/lib/utils'
 
 interface DailyWageTabProps {
@@ -47,11 +48,11 @@ export const DailyWageTab: React.FC<DailyWageTabProps> = ({
 
         <div className="flex items-center gap-2">
           <label className="text-xs font-semibold text-muted-foreground">Entry Date:</label>
-          <Input
-            type="date"
+          <DatePicker
             value={entryDate}
-            onChange={(e) => onEntryDateChange(e.target.value)}
-            className="h-9 w-38 bg-background border-border text-sm"
+            onChange={onEntryDateChange}
+            maxDate={localToday()}
+            className="h-9 w-40"
           />
         </div>
       </div>
@@ -102,7 +103,7 @@ export const DailyWageTab: React.FC<DailyWageTabProps> = ({
 
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50">
                     <span className="text-muted-foreground">
-                      Usual: <strong>{formatCurrency(Number(staff.wage || 0))}</strong>
+                      Usual: <strong>{staff.wage && Number(staff.wage) > 0 ? formatCurrency(Number(staff.wage)) : '—'}</strong>
                     </span>
 
                     {staff.salaryChanges ? (
@@ -165,7 +166,7 @@ export const DailyWageTab: React.FC<DailyWageTabProps> = ({
                         {staff.outlet || '-'}
                       </TableCell>
                       <TableCell className="text-right text-xs sm:text-sm font-medium">
-                        {formatCurrency(Number(staff.wage || 0))}
+                        {staff.wage && Number(staff.wage) > 0 ? formatCurrency(Number(staff.wage)) : '—'}
                       </TableCell>
                       <TableCell className="text-right">
                         {staff.salaryChanges ? (

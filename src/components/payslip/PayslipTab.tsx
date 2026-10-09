@@ -124,17 +124,17 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
 
     return (
       <section
-        className={`payslip-tablebox overflow-x-auto bg-white text-[#20332c] dark:bg-[#1c2a25] dark:text-[#e5eee9] border border-[#e3ebe7] dark:border-[#34463f] rounded-xl shadow-xs ${
+        className={`payslip-tablebox overflow-x-auto bg-white text-black dark:bg-[#121212] dark:text-white border border-neutral-300 dark:border-neutral-700 rounded-xl shadow-xs ${
           isPrintSlip ? 'print-slip' : ''
         }`}
       >
-        <table className="w-full border-collapse text-left">
+        <table className="w-full border-collapse text-left text-black dark:text-white">
           <thead>
             {/* 1. Brand & Outlet Header */}
             <tr>
               <th
                 colSpan={6}
-                className="p-3.5 bg-[#fafcfb] dark:bg-[#24352d] border-b border-[#dfe8e3] dark:border-[#3a4c43] font-normal"
+                className="p-3.5 bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-300 dark:border-neutral-700 font-normal"
               >
                 <div className="flex items-center justify-between gap-4 text-left">
                   <div className="flex items-center gap-3">
@@ -147,14 +147,14 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
                       />
                     ) : null}
                     <div>
-                      <div className="text-lg font-bold text-[#173b2f] dark:text-[#e5eee9] leading-tight">
+                      <div className="text-lg font-bold text-black dark:text-white leading-tight">
                         {storeProfile.name || 'Store / Company Name'}
                       </div>
-                      <div className="text-[11px] text-[#718078] dark:text-[#a4b5ac] font-normal max-w-md">
+                      <div className="text-xs text-neutral-900 dark:text-neutral-200 font-normal max-w-md">
                         {storeProfile.address || 'Address not added'}
                       </div>
                       {storeProfile.phone && (
-                        <div className="text-[11px] text-[#718078] dark:text-[#a4b5ac] font-normal">
+                        <div className="text-xs text-neutral-900 dark:text-neutral-200 font-normal">
                           Phone: {storeProfile.phone}
                         </div>
                       )}
@@ -171,7 +171,7 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
                       />
                     ) : null}
                     {staff.outlet && (
-                      <div className="text-xs font-semibold text-[#173b2f] dark:text-[#a8e5c7] mt-1">
+                      <div className="text-xs font-bold text-black dark:text-white mt-1">
                         {staff.outlet}
                       </div>
                     )}
@@ -181,17 +181,17 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
             </tr>
 
             {/* 2. Subheader Banner */}
-            <tr className="bg-[#f1f6f3] dark:bg-[#203028] border-b border-[#dfe8e3] dark:border-[#3a4c43]">
+            <tr className="bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-300 dark:border-neutral-700">
               <th
                 colSpan={6}
-                className="px-3.5 py-2.5 text-xs font-bold text-[#173b2f] dark:text-[#e5eee9] uppercase tracking-wider"
+                className="px-3.5 py-2.5 text-xs font-bold text-black dark:text-white uppercase tracking-wider"
               >
                 PAY SLIP · {staff.name} (ID {staff.id}) · {staff.dept} · {periodLabel}
               </th>
             </tr>
 
             {/* 3. Column Headers */}
-            <tr className="bg-[#fafcfb] dark:bg-[#24352d] border-b border-[#dfe8e3] dark:border-[#3a4c43] text-[11px] font-bold text-[#52675d] dark:text-[#c0d0c7] uppercase">
+            <tr className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-300 dark:border-neutral-700 text-[11px] font-bold text-black dark:text-white uppercase">
               <th className="px-3 py-2 text-left">Date</th>
               <th className="px-3 py-2 text-left">Attendance</th>
               <th className="px-3 py-2 text-right">Daily wage ₹</th>
@@ -224,34 +224,22 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
               return (
                 <tr
                   key={d}
-                  className="border-b border-[#edf1ef] dark:border-[#2e4037] hover:bg-[#f8fbf9] dark:hover:bg-[#24362d] text-xs text-[#31443c] dark:text-[#bdcbc4]"
+                  className="border-b border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-900/50 text-xs text-black dark:text-white"
                 >
-                  <td className="px-3 py-1.5">{formatDate(d)}</td>
-                  <td className="px-3 py-1.5 font-bold">
-                    <span
-                      className={
-                        mark === 'P'
-                          ? 'text-[#11724f] dark:text-[#9fe2bd]'
-                          : mark === 'H'
-                          ? 'text-[#98600c] dark:text-[#ffdc91]'
-                          : mark === 'A'
-                          ? 'text-[#b7404b] dark:text-[#ffb7b7]'
-                          : 'text-neutral-400'
-                      }
-                    >
-                      {mark}
-                    </span>
+                  <td className="px-3 py-1.5 font-medium">{formatDate(d)}</td>
+                  <td className="px-3 py-1.5 font-bold text-black dark:text-white">
+                    {mark}
                   </td>
-                  <td className="px-3 py-1.5 text-right font-mono">
+                  <td className="px-3 py-1.5 text-right font-mono text-black dark:text-white">
                     ₹{wage.toLocaleString('en-IN')}
                   </td>
-                  <td className="px-3 py-1.5 text-right font-mono text-[#98600c] dark:text-[#ffdc91]">
+                  <td className="px-3 py-1.5 text-right font-mono text-black dark:text-white">
                     ₹{ot.toLocaleString('en-IN')}
                   </td>
-                  <td className="px-3 py-1.5 text-right font-mono text-[#b7404b] dark:text-[#ffb7b7]">
+                  <td className="px-3 py-1.5 text-right font-mono text-black dark:text-white">
                     ₹{adv.toLocaleString('en-IN')}
                   </td>
-                  <td className="px-3 py-1.5 text-right font-mono font-bold text-[#162b26] dark:text-[#e5eee9]">
+                  <td className="px-3 py-1.5 text-right font-mono font-bold text-black dark:text-white">
                     ₹{net.toLocaleString('en-IN')}
                   </td>
                 </tr>
@@ -260,23 +248,23 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
           </tbody>
 
           <tfoot>
-            <tr className="font-bold text-xs border-t-2 border-[#dfe8e3] dark:border-[#3a4c43]">
+            <tr className="font-bold text-xs border-t-2 border-black dark:border-white bg-neutral-50 dark:bg-neutral-900 text-black dark:text-white">
               <th
                 colSpan={2}
-                className="px-3 py-2.5 text-left text-[#162b26] dark:text-[#e5eee9] font-bold"
+                className="px-3 py-2.5 text-left text-black dark:text-white font-bold"
               >
                 Period totals · Present {calc.full} · Half {calc.half} · Absent {calc.abs}
               </th>
-              <th className="px-3 py-2.5 text-right font-mono text-[#162b26] dark:text-[#e5eee9] font-bold">
+              <th className="px-3 py-2.5 text-right font-mono text-black dark:text-white font-bold">
                 ₹{calc.base.toLocaleString('en-IN')}
               </th>
-              <th className="px-3 py-2.5 text-right font-mono text-[#162b26] dark:text-[#e5eee9] font-bold">
+              <th className="px-3 py-2.5 text-right font-mono text-black dark:text-white font-bold">
                 ₹{calc.otPay.toLocaleString('en-IN')}
               </th>
-              <th className="px-3 py-2.5 text-right font-mono text-[#162b26] dark:text-[#e5eee9] font-bold">
+              <th className="px-3 py-2.5 text-right font-mono text-black dark:text-white font-bold">
                 ₹{calc.advance.toLocaleString('en-IN')}
               </th>
-              <th className="px-3 py-2.5 text-right font-mono text-xs font-bold text-[#162b26] dark:text-[#e5eee9]">
+              <th className="px-3 py-2.5 text-right font-mono text-xs font-bold text-black dark:text-white">
                 ₹{calc.net.toLocaleString('en-IN')}
               </th>
             </tr>
@@ -457,7 +445,7 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
                 )}
                 <span className="flex items-center gap-1">
                   <IndianRupee className="w-3.5 h-3.5" />
-                  ₹{Number(selectedStaff.wage || 0).toLocaleString('en-IN')} / day
+                  {selectedStaff.wage && Number(selectedStaff.wage) > 0 ? `₹${Number(selectedStaff.wage).toLocaleString('en-IN')} / day` : '—'}
                 </span>
               </div>
             </div>

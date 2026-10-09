@@ -71,7 +71,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
       )
       setStatus(editingStaff.status)
       setSalaryType(editingStaff.salaryChanges ? 'variable' : 'fixed')
-      setWage(String(editingStaff.wage || ''))
+      setWage(editingStaff.wage && String(editingStaff.wage) !== '0' ? String(editingStaff.wage) : '')
     } else {
       setId('')
       setName('')
@@ -100,7 +100,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
         outlet: outlet.trim() || 'Main Branch',
         designation: designation.trim() || '-',
         status,
-        wage: wage.trim() || '0',
+        wage: wage.trim() || '',
         salaryChanges: salaryType === 'variable'
       })
       onClose()

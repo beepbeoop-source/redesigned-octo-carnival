@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/table'
 import type { Staff, AttendanceMark } from '@/types/attendance'
 import { formatDate, formatCurrency, calculateStaffPayroll } from '@/lib/attendanceUtils'
+import { DatePicker } from '@/components/ui/date-picker'
 import { cn } from '@/lib/utils'
 
 interface AttendanceTabProps {
@@ -62,9 +63,17 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
   })
   const [errorMsg, setErrorMsg] = useState<string>('')
 
+  const validDates = dates.filter((d) => d <= today)
+
   const handleApply = () => {
     setErrorMsg('')
-    const success = onSetPeriod(localFrom, localTo)
+    let from = localFrom
+    let to = localTo
+    if (to > today) to = today
+    if (from > to) from = to
+    setLocalFrom(from)
+    setLocalTo(to)
+    const success = onSetPeriod(from, to)
     if (!success) {
       setErrorMsg('Please select a valid date range of up to 62 days.')
     }
@@ -90,13 +99,19 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
     }
   }
 
-  const handleDirectMark = (staffId: string, date: string, mark: AttendanceMark) => {
+  const handleCardMarkClick = (staff: Staff, date: string, mark: AttendanceMark) => {
     if (date > today) {
       setErrorMsg('Cannot mark attendance for a future date.')
       setTimeout(() => setErrorMsg(''), 3500)
       return
     }
-    onUpdateAttendance(staffId, date, mark)
+    if (date < today) {
+      // Past dates require edit confirmation via modal
+      onOpenAttendanceEdit(staff, date)
+      return
+    }
+    // Today can be marked directly
+    onUpdateAttendance(staff.id, date, mark)
   }
 
   const shiftMobileDate = (offset: number) => {
@@ -105,7 +120,9 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
     const y = current.getFullYear()
     const m = String(current.getMonth() + 1).padStart(2, '0')
     const d = String(current.getDate()).padStart(2, '0')
-    setSelectedMobileDate(`${y}-${m}-${d}`)
+    const nextDate = `${y}-${m}-${d}`
+    if (nextDate > today) return
+    setSelectedMobileDate(nextDate)
   }
 
   return (
@@ -115,21 +132,28 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
         <div className="flex flex-wrap items-end gap-2.5">
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-muted-foreground">From Date</label>
-            <Input
-              type="date"
+            <DatePicker
               value={localFrom}
-              onChange={(e) => setLocalFrom(e.target.value)}
-              className="h-8.5 w-34 sm:w-38 bg-background border-border text-xs sm:text-sm"
+              onChange={(d) => {
+                setLocalFrom(d)
+                if (d > localTo) setLocalTo(d)
+              }}
+              maxDate={today}
+              className="h-8.5 w-34 sm:w-40"
             />
           </div>
 
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-muted-foreground">To Date</label>
-            <Input
-              type="date"
+            <DatePicker
               value={localTo}
-              onChange={(e) => setLocalTo(e.target.value)}
-              className="h-8.5 w-34 sm:w-38 bg-background border-border text-xs sm:text-sm"
+              onChange={(d) => {
+                setLocalTo(d)
+                if (d < localFrom) setLocalFrom(d)
+              }}
+              maxDate={today}
+              minDate={localFrom}
+              className="h-8.5 w-34 sm:w-40"
             />
           </div>
 
@@ -217,7 +241,12 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => shiftMobileDate(1)}
-            className="h-8 w-8 p-0"
+            disabled={selectedMobileDate >= today}
+            className={cn(
+              "h-8 w-8 p-0",
+              selectedMobileDate >= today && "opacity-30 cursor-not-allowed"
+            )}
+            title={selectedMobileDate >= today ? "Cannot navigate to future dates" : "Next Day"}
           >
             <ChevronRight className="w-4 h-4" />
           </Button>
@@ -234,11 +263,15 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
           ) : (
             staffList.map((staff) => {
               const mark = staff.attendance[selectedMobileDate] || ''
-              const calc = calculateStaffPayroll(staff, dates)
+              const calc = calculateStaffPayroll(staff, validDates)
+              const isPast = selectedMobileDate < today
               return (
                 <Card
                   key={staff.id}
-                  className="border-border/80 shadow-xs bg-card hover:border-emerald-500/40 transition-all"
+                  className={cn(
+                    "border-border/80 shadow-xs bg-card transition-all",
+                    isPast ? "border-amber-500/30 bg-amber-500/[0.02]" : "hover:border-emerald-500/40"
+                  )}
                 >
                   <CardContent className="p-3.5 space-y-3">
                     {/* Header Row */}
@@ -260,7 +293,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                           <span>{staff.outlet || 'Main'}</span>
                           <span>•</span>
                           <span className="font-semibold text-foreground">
-                            {formatCurrency(Number(staff.wage || 0))}/day
+                            {staff.wage && Number(staff.wage) > 0 ? `${formatCurrency(Number(staff.wage))}/day` : '—'}
                           </span>
                         </div>
                       </div>
@@ -278,13 +311,27 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                       )}
                     </div>
 
+                    {/* Past date notice if viewing previous dates */}
+                    {isPast && (
+                      <div className="flex items-center justify-between px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-md text-[10px] text-amber-800 dark:text-amber-300">
+                        <span className="font-semibold">Past Record ({formatDate(selectedMobileDate)})</span>
+                        <button
+                          type="button"
+                          onClick={() => onOpenAttendanceEdit(staff, selectedMobileDate)}
+                          className="underline font-bold hover:text-amber-900 dark:hover:text-amber-200 cursor-pointer"
+                        >
+                          Edit Entry
+                        </button>
+                      </div>
+                    )}
+
                     {/* Quick P / H / A Segmented Touch Buttons */}
                     <div className="grid grid-cols-3 gap-1.5">
                       <button
                         type="button"
-                        onClick={() => handleDirectMark(staff.id, selectedMobileDate, 'P')}
+                        onClick={() => handleCardMarkClick(staff, selectedMobileDate, 'P')}
                         className={cn(
-                          'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none',
+                          'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none cursor-pointer',
                           mark === 'P'
                             ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-600/30'
                             : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -296,9 +343,9 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
 
                       <button
                         type="button"
-                        onClick={() => handleDirectMark(staff.id, selectedMobileDate, 'H')}
+                        onClick={() => handleCardMarkClick(staff, selectedMobileDate, 'H')}
                         className={cn(
-                          'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none',
+                          'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none cursor-pointer',
                           mark === 'H'
                             ? 'bg-amber-600 text-white shadow-xs ring-2 ring-amber-600/30'
                             : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -310,9 +357,9 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
 
                       <button
                         type="button"
-                        onClick={() => handleDirectMark(staff.id, selectedMobileDate, 'A')}
+                        onClick={() => handleCardMarkClick(staff, selectedMobileDate, 'A')}
                         className={cn(
-                          'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none',
+                          'flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all select-none cursor-pointer',
                           mark === 'A'
                             ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-600/30'
                             : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -358,7 +405,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                     <TableHead className="min-w-[100px] font-semibold text-xs text-right">
                       Daily Wage (₹)
                     </TableHead>
-                    {dates.map((d) => (
+                    {validDates.map((d) => (
                       <TableHead
                         key={d}
                         className={cn(
@@ -381,13 +428,13 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                 <TableBody>
                   {staffList.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={dates.length + 8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={validDates.length + 8} className="text-center py-8 text-muted-foreground">
                         No staff members match the current filter.
                       </TableCell>
                     </TableRow>
                   ) : (
                     staffList.map((staff) => {
-                      const calc = calculateStaffPayroll(staff, dates)
+                      const calc = calculateStaffPayroll(staff, validDates)
                       return (
                         <TableRow key={staff.id} className="hover:bg-muted/20 transition-colors">
                           <TableCell className="font-medium text-xs sm:text-sm sticky left-0 z-10 bg-card/95 backdrop-blur-xs border-r border-border/40">
@@ -426,8 +473,9 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                           </TableCell>
 
                           {/* Attendance Marks */}
-                          {dates.map((d) => {
+                          {validDates.map((d) => {
                             const mark = staff.attendance[d] || ''
+                            const isTodayDate = d === today
                             return (
                               <TableCell key={d} className="p-1 text-center">
                                 <button
@@ -442,9 +490,10 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                                     mark === 'A' &&
                                       'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300/50 hover:bg-rose-200',
                                     !mark &&
-                                      'bg-muted/50 text-muted-foreground/40 hover:bg-muted hover:text-muted-foreground border border-transparent'
+                                      'bg-muted/50 text-muted-foreground/40 hover:bg-muted hover:text-muted-foreground border border-transparent',
+                                    !isTodayDate && 'ring-1 ring-border/50'
                                   )}
-                                  title={`${staff.name} - ${formatDate(d)}: ${mark || 'Unmarked'}`}
+                                  title={`${staff.name} - ${formatDate(d)}: ${mark || 'Unmarked'}${!isTodayDate ? ' (Click to edit past record)' : ''}`}
                                 >
                                   {mark || '—'}
                                 </button>

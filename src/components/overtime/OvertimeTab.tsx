@@ -12,7 +12,8 @@ import {
   TableRow
 } from '@/components/ui/table'
 import type { Staff } from '@/types/attendance'
-import { formatDate } from '@/lib/attendanceUtils'
+import { formatDate, localToday } from '@/lib/attendanceUtils'
+import { DatePicker } from '@/components/ui/date-picker'
 
 interface OvertimeTabProps {
   staffList: Staff[]
@@ -47,11 +48,11 @@ export const OvertimeTab: React.FC<OvertimeTabProps> = ({
 
         <div className="flex items-center gap-2">
           <label className="text-xs font-semibold text-muted-foreground">Entry Date:</label>
-          <Input
-            type="date"
+          <DatePicker
             value={entryDate}
-            onChange={(e) => onEntryDateChange(e.target.value)}
-            className="h-9 w-38 bg-background border-border text-sm"
+            onChange={onEntryDateChange}
+            maxDate={localToday()}
+            className="h-9 w-40"
           />
         </div>
       </div>

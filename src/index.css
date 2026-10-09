@@ -1,13 +1,18 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource/roboto/300.css";
+@import "@fontsource/roboto/400.css";
+@import "@fontsource/roboto/400-italic.css";
+@import "@fontsource/roboto/500.css";
+@import "@fontsource/roboto/700.css";
+@import "@fontsource/roboto/900.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-heading: 'Roboto', sans-serif;
+    --font-sans: 'Roboto', sans-serif;
     --color-emerald-50: var(--brand-50, #ecfdf5);
     --color-emerald-100: var(--brand-100, #d1fae5);
     --color-emerald-200: var(--brand-200, #a7f3d0);
@@ -145,12 +150,14 @@
     -webkit-tap-highlight-color: transparent;
   }
   html {
+    font-family: 'Roboto', sans-serif;
     @apply font-sans;
     touch-action: manipulation;
     -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-background text-foreground;
+    font-family: 'Roboto', sans-serif;
+    @apply bg-background text-foreground font-sans;
     min-height: 100vh;
     min-height: -webkit-fill-available;
     overscroll-behavior-y: none;
@@ -218,11 +225,17 @@ input[type="number"] {
     size: A4 portrait;
     margin: 6mm;
   }
+  *, *::before, *::after {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    text-shadow: none !important;
+  }
   html, body {
     width: 100% !important;
     height: auto !important;
     background: #ffffff !important;
     color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
   }
   body {
     font-size: 9px !important;
@@ -245,7 +258,7 @@ input[type="number"] {
     width: 100% !important;
     max-width: 100% !important;
     overflow: visible !important;
-    border: 1px solid #dce6e1 !important;
+    border: 1.5px solid #000000 !important;
     box-shadow: none !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
@@ -255,6 +268,11 @@ input[type="number"] {
     border-radius: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+  }
+  .payslip-tablebox * {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
   }
   .payslip-tablebox table {
     width: 100% !important;
@@ -271,21 +289,43 @@ input[type="number"] {
     font-size: 10px !important;
     line-height: 1.2 !important;
     padding: 4px 6px !important;
-    border: 1px solid #edf1ef !important;
+    border: 1px solid #000000 !important;
     text-align: left;
     color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
   }
   .payslip-tablebox thead th {
     font-size: 11px !important;
-    background: #fafcfb !important;
-    border-bottom: 1px solid #dfe8e3 !important;
+    background: #f0f0f0 !important;
+    border-bottom: 1.5px solid #000000 !important;
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+  }
+  .payslip-tablebox thead tr:first-child th {
+    background: #ffffff !important;
+  }
+  .payslip-tablebox thead tr:nth-child(2) th {
+    background: #e8e8e8 !important;
+    font-weight: 700 !important;
+  }
+  .payslip-tablebox tbody tr {
+    border-bottom: 1px solid #cccccc !important;
+  }
+  .payslip-tablebox tbody td {
+    border: 1px solid #cccccc !important;
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
   }
   .payslip-tablebox tfoot,
   .payslip-tablebox tfoot tr,
   .payslip-tablebox tfoot th,
   .payslip-tablebox tfoot td {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
+    background: #f0f0f0 !important;
+    background-color: #f0f0f0 !important;
+    border-top: 2px solid #000000 !important;
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    font-weight: 700 !important;
   }
   .payslip-tablebox img {
     max-width: 60px !important;
