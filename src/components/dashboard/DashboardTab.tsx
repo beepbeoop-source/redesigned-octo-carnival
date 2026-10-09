@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   Users,
   Banknote,
@@ -22,32 +22,78 @@ import type { Staff } from '@/types/attendance'
 import {
   formatCurrency,
   calculateGroupSummary,
-  calculateStaffPayroll
+  calculateStaffPayroll,
+  localToday,
+  makeDates
 } from '@/lib/attendanceUtils'
+import { PeriodRangePicker } from '@/components/layout/PeriodRangePicker'
 
 interface DashboardTabProps {
   staffList: Staff[]
-  dates: string[]
+  dates?: string[]
 }
 
-export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList, dates }) => {
-  // Aggregate stats
-  const totalStats = staffList.reduce(
-    (acc, staff) => {
-      const calc = calculateStaffPayroll(staff, dates)
-      acc.base += calc.base
-      acc.ot += calc.otPay
-      acc.adv += calc.advance
-      acc.net += calc.net
-      acc.full += calc.full
-      acc.half += calc.half
-      acc.abs += calc.abs
-      return acc
-    },
-    { base: 0, ot: 0, adv: 0, net: 0, full: 0, half: 0, abs: 0 }
+export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList }) => {
+  const today = useMemo(() => localToday(), [])
+  const defaultMonthStart = useMemo(() => `${today.slice(0, 7)}-01`, [today])
+
+  // Summary Table local range state (defaults to current month up to today)
+  const [summaryFrom, setSummaryFrom] = useState(defaultMonthStart)
+  const [summaryTo, setSummaryTo] = useState(today)
+
+  // Top metric cards calculate across current month dates
+  const monthDates = useMemo(
+    () => makeDates(defaultMonthStart, today) || [today],
+    [defaultMonthStart, today]
   )
 
-  const groupSummaries = calculateGroupSummary(staffList, dates)
+  const totalStats = useMemo(
+    () =>
+      staffList.reduce(
+        (acc, staff) => {
+          const calc = calculateStaffPayroll(staff, monthDates)
+          acc.base += calc.base
+          acc.ot += calc.otPay
+          acc.adv += calc.advance
+          acc.net += calc.net
+          acc.full += calc.full
+          acc.half += calc.half
+          acc.abs += calc.abs
+          return acc
+        },
+        { base: 0, ot: 0, adv: 0, net: 0, full: 0, half: 0, abs: 0 }
+      ),
+    [staffList, monthDates]
+  )
+
+  // Summary table dates based on summaryFrom / summaryTo
+  const summaryDates = useMemo(() => {
+    return makeDates(summaryFrom, summaryTo)?.filter((d) => d <= today) || [today]
+  }, [summaryFrom, summaryTo, today])
+
+  const groupSummaries = useMemo(
+    () => calculateGroupSummary(staffList, summaryDates),
+    [staffList, summaryDates]
+  )
+
+  const summaryTotals = useMemo(
+    () =>
+      staffList.reduce(
+        (acc, staff) => {
+          const calc = calculateStaffPayroll(staff, summaryDates)
+          acc.base += calc.base
+          acc.ot += calc.otPay
+          acc.adv += calc.advance
+          acc.net += calc.net
+          acc.full += calc.full
+          acc.half += calc.half
+          acc.abs += calc.abs
+          return acc
+        },
+        { base: 0, ot: 0, adv: 0, net: 0, full: 0, half: 0, abs: 0 }
+      ),
+    [staffList, summaryDates]
+  )
 
   return (
     <div className="space-y-6">
@@ -159,7 +205,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList, dates }) 
 
       {/* Grouped Breakdown Table */}
       <Card className="border-border/80 shadow-sm overflow-hidden">
-        <CardHeader className="p-4 sm:p-5 border-b border-border/70 flex flex-row items-center justify-between bg-muted/20">
+        <CardHeader className="p-4 sm:p-5 border-b border-border/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-muted/20">
           <div>
             <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
               <Building className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -168,6 +214,16 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList, dates }) 
             <p className="text-xs text-muted-foreground mt-0.5">
               Aggregated attendance and payroll totals
             </p>
+          </div>
+          <div className="shrink-0">
+            <PeriodRangePicker
+              fromDate={summaryFrom}
+              toDate={summaryTo}
+              onSetPeriod={(from, to) => {
+                setSummaryFrom(from)
+                setSummaryTo(to)
+              }}
+            />
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -238,25 +294,25 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList, dates }) 
                   </TableCell>
                   <TableCell className="text-center text-xs sm:text-sm">{staffList.length}</TableCell>
                   <TableCell className="text-center text-green-700 dark:text-green-300 text-xs sm:text-sm">
-                    {totalStats.full}
+                    {summaryTotals.full}
                   </TableCell>
                   <TableCell className="text-center text-amber-700 dark:text-amber-300 text-xs sm:text-sm">
-                    {totalStats.half}
+                    {summaryTotals.half}
                   </TableCell>
                   <TableCell className="text-center text-red-700 dark:text-red-300 text-xs sm:text-sm">
-                    {totalStats.abs}
+                    {summaryTotals.abs}
                   </TableCell>
                   <TableCell className="text-right text-xs sm:text-sm">
-                    {formatCurrency(totalStats.base)}
+                    {formatCurrency(summaryTotals.base)}
                   </TableCell>
                   <TableCell className="text-right text-xs sm:text-sm">
-                    {formatCurrency(totalStats.ot)}
+                    {formatCurrency(summaryTotals.ot)}
                   </TableCell>
                   <TableCell className="text-right text-xs sm:text-sm">
-                    {formatCurrency(totalStats.adv)}
+                    {formatCurrency(summaryTotals.adv)}
                   </TableCell>
                   <TableCell className="text-right text-xs sm:text-sm text-emerald-700 dark:text-emerald-300 font-extrabold">
-                    {formatCurrency(totalStats.net)}
+                    {formatCurrency(summaryTotals.net)}
                   </TableCell>
                 </TableRow>
               </TableFooter>

@@ -19,16 +19,12 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { TabType, StoreProfile, UserProfile } from '@/types/attendance'
-import { PeriodRangePicker } from './PeriodRangePicker'
 import { cn } from '@/lib/utils'
 
 interface DesktopSidebarProps {
   activeTab: TabType
   onTabChange: (tab: TabType) => void
   storeProfile: StoreProfile
-  fromDate: string
-  toDate: string
-  onSetPeriod: (from: string, to: string) => void
   theme: 'light' | 'dark'
   onToggleTheme: () => void
   onExportCsv: () => void
@@ -53,9 +49,6 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   activeTab,
   onTabChange,
   storeProfile,
-  fromDate,
-  toDate,
-  onSetPeriod,
   theme,
   onToggleTheme,
   onExportCsv,
@@ -92,13 +85,6 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
             </p>
           </div>
         </div>
-
-        {/* Interactive Period / Date Range Picker */}
-        <PeriodRangePicker
-          fromDate={fromDate}
-          toDate={toDate}
-          onSetPeriod={onSetPeriod}
-        />
 
         {/* Top Action Buttons: Theme Toggle & Export CSV */}
         <div className="grid grid-cols-2 gap-1.5 pt-1">

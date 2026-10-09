@@ -26,17 +26,12 @@ import {
   SheetTitle
 } from '@/components/ui/sheet'
 import type { TabType, StoreProfile, UserProfile } from '@/types/attendance'
-import { formatDate } from '@/lib/attendanceUtils'
-import { PeriodRangePicker } from './PeriodRangePicker'
 import { cn } from '@/lib/utils'
 
 interface MobileHeaderProps {
   activeTab: TabType
   onTabChange: (tab: TabType) => void
   storeProfile: StoreProfile
-  fromDate: string
-  toDate: string
-  onSetPeriod: (from: string, to: string) => void
   theme: 'light' | 'dark'
   onToggleTheme: () => void
   onExportCsv: () => void
@@ -62,9 +57,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   activeTab,
   onTabChange,
   storeProfile,
-  fromDate,
-  toDate,
-  onSetPeriod,
   theme,
   onToggleTheme,
   onExportCsv,
@@ -74,11 +66,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   onLogout
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-
-  const periodLabel =
-    fromDate === toDate
-      ? formatDate(fromDate)
-      : `${formatDate(fromDate)} - ${formatDate(toDate)}`
 
   const handleSelectTab = (tab: TabType) => {
     onTabChange(tab)
@@ -111,7 +98,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                 {activeTab}
               </span>
               <span>•</span>
-              <span className="truncate">{periodLabel}</span>
+              <span className="truncate">
+                {storeProfile.outlets && storeProfile.outlets.length > 0
+                  ? storeProfile.outlets[0]
+                  : (storeProfile.address || 'Payroll & Attendance')}
+              </span>
             </div>
           </div>
         </div>
@@ -161,7 +152,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
       {/* Navigation Drawer (Sheet) */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <SheetContent side="left" className="w-[85vw] max-w-[320px] p-0 flex flex-col bg-card border-r border-border pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          {/* Drawer Header with Brand Profile, Date Range Picker & Top Actions */}
+          {/* Drawer Header with Brand Profile & Top Actions */}
           <SheetHeader className="p-3.5 border-b border-border/80 text-left bg-muted/30 space-y-2.5">
             <div className="flex items-center gap-3">
               {storeProfile.logo ? (
@@ -186,13 +177,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                 </p>
               </div>
             </div>
-
-            {/* Interactive Period / Date Range Picker */}
-            <PeriodRangePicker
-              fromDate={fromDate}
-              toDate={toDate}
-              onSetPeriod={onSetPeriod}
-            />
 
             {/* Top Action Buttons: Theme Toggle & Export CSV */}
             <div className="grid grid-cols-2 gap-1.5 pt-0.5">

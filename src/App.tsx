@@ -170,9 +170,6 @@ export function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         storeProfile={storeProfile}
-        fromDate={fromDate}
-        toDate={toDate}
-        onSetPeriod={handleSetPeriod}
         theme={theme}
         onToggleTheme={toggleTheme}
         onExportCsv={handleExportCsv}
@@ -189,9 +186,6 @@ export function App() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             storeProfile={storeProfile}
-            fromDate={fromDate}
-            toDate={toDate}
-            onSetPeriod={handleSetPeriod}
             theme={theme}
             onToggleTheme={toggleTheme}
             onExportCsv={handleExportCsv}
@@ -204,7 +198,7 @@ export function App() {
 
         <main className="w-full p-3 sm:p-5 lg:p-6 space-y-4 pb-24 md:pb-8 flex-1 flex flex-col min-h-0">
           {/* Global Filter Bar */}
-          {activeTab !== 'payslip' && activeTab !== 'settings' && (
+          {activeTab !== 'dashboard' && activeTab !== 'payslip' && activeTab !== 'settings' && (
             <FilterBar
               activeTab={activeTab}
               searchQuery={searchQuery}
@@ -225,7 +219,7 @@ export function App() {
           {/* Active Tab View */}
           <section className="transition-all duration-150 flex-1 flex flex-col min-h-0 w-full">
             {activeTab === 'dashboard' && (
-              <DashboardTab staffList={filteredStaffList} dates={activeDates} />
+              <DashboardTab staffList={staffList} />
             )}
 
             {activeTab === 'attendance' && (
