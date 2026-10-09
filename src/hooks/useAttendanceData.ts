@@ -8,6 +8,7 @@ import {
 } from '../lib/attendanceUtils'
 import { isSupabaseConfigured, testSupabaseConnection, getSupabase } from '../lib/supabaseClient'
 import { startKeepAliveService, stopKeepAliveService } from '../lib/supabaseKeepAlive'
+import { updateAppBrandFromLogo } from '../lib/colorExtractor'
 import {
   fetchStaffFromSupabase,
   pushStaffToSupabase,
@@ -194,14 +195,15 @@ export function useAttendanceData() {
     }
   }, [staffList])
 
-  // Save store profile locally
+  // Save store profile locally & update dynamic brand palette from logo
   useEffect(() => {
     try {
       localStorage.setItem(PROFILE_KEY, JSON.stringify(storeProfile))
     } catch (err) {
       console.error('Failed to persist store profile locally:', err)
     }
-  }, [storeProfile])
+    updateAppBrandFromLogo(storeProfile.logo).catch(console.error)
+  }, [storeProfile.logo, storeProfile])
 
   // Sync theme to DOM
   useEffect(() => {

@@ -178,7 +178,7 @@ export function App() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 md:pl-64 lg:pl-72">
+      <div className="flex-1 flex flex-col min-w-0 md:pl-64 lg:pl-72 min-h-screen">
         {/* Mobile Header with Hamburger Menu (Visible on Mobile only) */}
         <div className="md:hidden">
           <MobileHeader
@@ -198,7 +198,7 @@ export function App() {
           />
         </div>
 
-        <main className="w-full max-w-7xl mx-auto p-3 sm:p-6 lg:p-8 space-y-5 pb-24 md:pb-12 flex-1">
+        <main className="w-full p-3 sm:p-5 lg:p-6 space-y-4 pb-24 md:pb-8 flex-1 flex flex-col min-h-0">
           {/* Global Filter Bar */}
           {activeTab !== 'payslip' && activeTab !== 'settings' && (
             <FilterBar
@@ -219,7 +219,7 @@ export function App() {
           )}
 
           {/* Active Tab View */}
-          <section className="transition-all duration-150">
+          <section className="transition-all duration-150 flex-1 flex flex-col min-h-0 w-full">
             {activeTab === 'dashboard' && (
               <DashboardTab staffList={filteredStaffList} dates={activeDates} />
             )}
