@@ -4,6 +4,14 @@ import type { UserProfile, UserRole } from '../types/attendance'
 
 const SESSION_STORAGE_KEY = 'hotel_bilal_active_user'
 
+function resolveAuthEmail(identifier: string): string {
+  const clean = identifier.trim().toLowerCase()
+  if (clean.includes('@')) {
+    return clean
+  }
+  return `${clean}@hotelbilal.app`
+}
+
 export function useAuth() {
   const [profile, setProfile] = useState<UserProfile | null>(() => {
     try {
@@ -30,30 +38,20 @@ export function useAuth() {
     }
   }, [])
 
-  // Verify / Refresh current session profile against database
-  const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
-    const savedStr = localStorage.getItem(SESSION_STORAGE_KEY)
-    if (!savedStr) {
-      setIsLoading(false)
-      return null
-    }
-
+  // Map Supabase Auth user & profile row into UserProfile object
+  const buildProfileFromUser = useCallback(async (userId: string, authUserMeta?: any): Promise<UserProfile | null> => {
     const client = getSupabase()
-    if (!client || !isSupabaseConfigured()) {
-      setIsLoading(false)
-      return profile
-    }
+    if (!client) return null
 
     try {
-      const current: UserProfile = JSON.parse(savedStr)
       const { data, error: fetchErr } = await client
-        .from('app_users')
+        .from('user_profiles')
         .select('id, username, display_name, role, outlet, created_at, updated_at')
-        .eq('id', current.id)
+        .eq('id', userId)
         .maybeSingle()
 
       if (!fetchErr && data) {
-        const updated: UserProfile = {
+        return {
           id: data.id,
           username: data.username,
           displayName: data.display_name || data.username,
@@ -62,71 +60,121 @@ export function useAuth() {
           createdAt: data.created_at,
           updatedAt: data.updated_at
         }
-        persistProfile(updated)
-        setIsLoading(false)
-        return updated
-      } else if (fetchErr) {
-        console.warn('Session verify note:', fetchErr.message)
+      }
+
+      // Fallback to auth metadata if user_profiles table is still populating
+      const meta = authUserMeta || {}
+      return {
+        id: userId,
+        username: meta.username || 'staff',
+        displayName: meta.display_name || meta.name || 'Staff User',
+        role: (meta.role as UserRole) || 'staff',
+        outlet: meta.outlet || 'Main Branch',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
     } catch (err) {
-      console.warn('Failed to revalidate session:', err)
+      console.warn('Profile resolution note:', err)
+      return null
+    }
+  }, [])
+
+  // Verify / Refresh current session against Supabase Auth
+  const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
+    const client = getSupabase()
+    if (!client || !isSupabaseConfigured()) {
+      setIsLoading(false)
+      return profile
+    }
+
+    try {
+      const { data: { session }, error: sessionErr } = await client.auth.getSession()
+      if (sessionErr || !session || !session.user) {
+        persistProfile(null)
+        setIsLoading(false)
+        return null
+      }
+
+      const userProf = await buildProfileFromUser(session.user.id, session.user.user_metadata)
+      if (userProf) {
+        persistProfile(userProf)
+        setIsLoading(false)
+        return userProf
+      }
+    } catch (err) {
+      console.warn('Failed to revalidate Supabase session:', err)
     } finally {
       setIsLoading(false)
     }
 
     return profile
-  }, [persistProfile, profile])
+  }, [buildProfileFromUser, persistProfile, profile])
 
+  // Setup Supabase Auth listener
   useEffect(() => {
+    const client = getSupabase()
+    if (!client || !isSupabaseConfigured()) {
+      setIsLoading(false)
+      return
+    }
+
     refreshProfile()
+
+    const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const userProf = await buildProfileFromUser(session.user.id, session.user.user_metadata)
+        if (userProf) persistProfile(userProf)
+      } else if (event === 'SIGNED_OUT') {
+        persistProfile(null)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
-  // 1. Login with Username & Password
+  // 1. Login with Username or Email & Password via Supabase Auth
   const login = async (
-    username: string,
+    usernameOrEmail: string,
     password: string
   ): Promise<{ success: boolean; error?: string }> => {
     const client = getSupabase()
     if (!client || !isSupabaseConfigured()) {
       return {
         success: false,
-        error: 'Database connection is not configured. Please check Supabase credentials in settings.'
+        error: 'Database connection is not configured. Please check Supabase credentials.'
       }
     }
 
     setError(null)
-    const cleanUsername = username.trim()
+    const email = resolveAuthEmail(usernameOrEmail)
 
     try {
-      const { data, error: rpcErr } = await client.rpc('app_login', {
-        p_username: cleanUsername,
-        p_password: password
+      const { data, error: authErr } = await client.auth.signInWithPassword({
+        email,
+        password
       })
 
-      if (rpcErr) {
-        setError(rpcErr.message)
-        return { success: false, error: rpcErr.message }
+      if (authErr) {
+        // Human friendly error messages
+        let msg = authErr.message
+        if (msg.toLowerCase().includes('invalid login credentials')) {
+          msg = 'Invalid email or password. Please try again.'
+        }
+        setError(msg)
+        return { success: false, error: msg }
       }
 
-      if (!data || !data.success) {
-        const errMsg = data?.error || 'Invalid username or password.'
-        setError(errMsg)
-        return { success: false, error: errMsg }
+      if (data?.user) {
+        const userProf = await buildProfileFromUser(data.user.id, data.user.user_metadata)
+        if (userProf) {
+          persistProfile(userProf)
+        }
+        return { success: true }
       }
 
-      const u = data.user
-      const userProf: UserProfile = {
-        id: u.id,
-        username: u.username,
-        displayName: u.displayName || u.username,
-        role: (u.role as UserRole) || 'staff',
-        outlet: u.outlet || 'Main Branch',
-        createdAt: u.createdAt,
-        updatedAt: u.updatedAt
-      }
-
-      persistProfile(userProf)
-      return { success: true }
+      return { success: false, error: 'Authentication failed.' }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed'
       setError(msg)
@@ -136,6 +184,14 @@ export function useAuth() {
 
   // 2. Logout
   const logout = async (): Promise<void> => {
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.auth.signOut()
+      } catch (err) {
+        console.warn('Sign out warning:', err)
+      }
+    }
     persistProfile(null)
   }
 
@@ -149,13 +205,13 @@ export function useAuth() {
     if (!client) return { success: false, error: 'Database is not configured' }
 
     try {
-      const { data, error: rpcErr } = await client.rpc('app_change_password', {
-        p_user_id: profile.id,
-        p_new_password: newPassword
+      const { error: updateErr } = await client.auth.updateUser({
+        password: newPassword
       })
 
-      if (rpcErr) return { success: false, error: rpcErr.message }
-      if (data && !data.success) return { success: false, error: data.error || 'Failed to update password' }
+      if (updateErr) {
+        return { success: false, error: updateErr.message }
+      }
 
       return { success: true }
     } catch (err: unknown) {
@@ -174,11 +230,12 @@ export function useAuth() {
     if (!client) return { success: false, error: 'Database is not configured' }
 
     try {
-      const { data, error: rpcErr } = await client.rpc('app_create_user', {
+      const { data, error: rpcErr } = await client.rpc('admin_create_app_user', {
         p_username: username.trim(),
         p_password: password,
         p_name: name.trim(),
-        p_role: 'staff'
+        p_role: 'staff',
+        p_outlet: 'Main Branch'
       })
 
       if (rpcErr) return { success: false, error: rpcErr.message }
@@ -200,7 +257,7 @@ export function useAuth() {
     if (!client) return { success: false, error: 'Database is not configured' }
 
     try {
-      const { data, error: rpcErr } = await client.rpc('app_change_password', {
+      const { data, error: rpcErr } = await client.rpc('admin_reset_user_password', {
         p_user_id: targetUserId,
         p_new_password: newPassword
       })
@@ -223,7 +280,7 @@ export function useAuth() {
     if (!client) return { success: false, error: 'Database is not configured' }
 
     try {
-      const { data, error: rpcErr } = await client.rpc('app_delete_user', {
+      const { data, error: rpcErr } = await client.rpc('admin_delete_app_user', {
         p_user_id: targetUserId
       })
 
@@ -244,7 +301,7 @@ export function useAuth() {
 
     try {
       const { data, error: rpcErr } = await client.rpc('app_list_users')
-      if (!rpcErr && data) {
+      if (!rpcErr && data && Array.isArray(data)) {
         return data.map((r: any) => ({
           id: r.id,
           username: r.username,
@@ -256,9 +313,9 @@ export function useAuth() {
         }))
       }
 
-      // Fallback direct table select
+      // Direct user_profiles query
       const { data: tableData, error: tableErr } = await client
-        .from('app_users')
+        .from('user_profiles')
         .select('id, username, display_name, role, outlet, created_at, updated_at')
         .order('role', { ascending: true })
         .order('display_name', { ascending: true })

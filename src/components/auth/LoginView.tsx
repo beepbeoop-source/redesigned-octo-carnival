@@ -1,12 +1,14 @@
 import React, { useState } from 'react'
 import {
   Lock,
-  User,
+  Mail,
   Eye,
   EyeOff,
   Building2,
   LogIn,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,14 +18,14 @@ import type { StoreProfile } from '@/types/attendance'
 
 interface LoginViewProps {
   storeProfile: StoreProfile
-  onLogin: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
+  onLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({
   storeProfile,
   onLogin
 }) => {
-  const [username, setUsername] = useState<string>('')
+  const [email, setEmail] = useState<string>('')
   const [password, setPassword] = useState<string>('')
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -33,8 +35,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
     e.preventDefault()
     setErrorMessage('')
 
-    if (!username.trim() || !password.trim()) {
-      setErrorMessage('Please enter both username and password.')
+    const cleanEmail = email.trim()
+    if (!cleanEmail || !password.trim()) {
+      setErrorMessage('Please enter your email and password.')
       return
     }
 
@@ -46,9 +49,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setIsLoading(true)
 
     try {
-      const res = await onLogin(username.trim(), password)
+      const res = await onLogin(cleanEmail, password)
       if (!res.success) {
-        setErrorMessage(res.error || 'Invalid username or password. Please try again.')
+        setErrorMessage(res.error || 'Invalid email or password. Please try again.')
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Authentication failed.'
@@ -88,12 +91,16 @@ export const LoginView: React.FC<LoginViewProps> = ({
         {/* Login Card */}
         <Card className="border-border/80 shadow-md bg-card">
           <CardHeader className="pb-3 text-center">
+            <div className="inline-flex items-center gap-1.5 self-center mx-auto px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[11px] font-semibold mb-1">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Supabase Native Auth</span>
+            </div>
             <CardTitle className="text-base font-bold flex items-center justify-center gap-2">
               <Lock className="w-4 h-4 text-emerald-600" />
-              <span>Staff Sign In</span>
+              <span>Sign In</span>
             </CardTitle>
             <CardDescription className="text-xs">
-              Enter your assigned username and password to access the portal
+              Enter your email and password to access the portal
             </CardDescription>
           </CardHeader>
 
@@ -107,21 +114,21 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
               <div className="space-y-1.5">
-                <Label htmlFor="auth-username" className="text-xs font-semibold">
-                  Username <span className="text-rose-500">*</span>
+                <Label htmlFor="auth-email" className="text-xs font-semibold">
+                  Email Address <span className="text-rose-500">*</span>
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    id="auth-username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="e.g. admin or cashier1"
+                    id="auth-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@example.com"
                     className="h-9.5 pl-9 bg-background text-sm"
                     autoCapitalize="none"
                     autoCorrect="off"
-                    autoComplete="username"
+                    autoComplete="email"
                     required
                   />
                 </div>
@@ -163,7 +170,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 className="w-full h-10 mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-xs transition-all"
               >
                 {isLoading ? (
-                  <span>Authenticating...</span>
+                  <span>Signing In...</span>
                 ) : (
                   <span className="flex items-center justify-center gap-1.5">
                     <LogIn className="w-4 h-4" />
@@ -175,10 +182,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
           </CardContent>
         </Card>
 
-        {/* Security & Offline indicator */}
-        <p className="text-[11px] text-center text-muted-foreground">
-          Protected by Supabase Enterprise Authentication & RLS Security
-        </p>
+        {/* Security & RLS indicator */}
+        <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Secured by Supabase Native Authentication & Row Level Security</span>
+        </div>
       </div>
     </div>
   )

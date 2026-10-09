@@ -1,19 +1,20 @@
 -- ==============================================================================
--- SAFE SUPABASE SCHEMA INITIALIZATION & UPDATE SCRIPT
--- NON-DESTRUCTIVE: Preserves all existing tables and data (NO DROP TABLES).
--- Run this in Supabase SQL Editor to set up or update your database schema safely.
+-- SAFE & SECURE SUPABASE SCHEMA: SUPABASE NATIVE AUTH + STRICT RLS POLICIES
+-- ==============================================================================
+-- This schema secures all business and staff data with Row Level Security (RLS).
+-- Only authenticated users can access attendance and payroll records.
+-- Heartbeat / Keep-alive table & function remain public so UptimeRobot pings work.
 -- ==============================================================================
 
--- Enable pgcrypto for password hashing
+-- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ==============================================================================
--- 1. DEDICATED APP USERS TABLE (Authentication & Roles)
+-- 1. USER PROFILES TABLE (Linked to Supabase auth.users)
 -- ==============================================================================
-CREATE TABLE IF NOT EXISTS public.app_users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  username TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  username TEXT UNIQUE NOT NULL,
   display_name TEXT NOT NULL DEFAULT 'Staff Member',
   role TEXT NOT NULL DEFAULT 'staff' CHECK (role IN ('admin', 'staff')),
   outlet TEXT NOT NULL DEFAULT 'Main Branch',
@@ -21,8 +22,20 @@ CREATE TABLE IF NOT EXISTS public.app_users (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_app_users_username ON public.app_users(LOWER(username));
-CREATE INDEX IF NOT EXISTS idx_app_users_role ON public.app_users(role);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_username ON public.user_profiles(LOWER(username));
+CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON public.user_profiles(role);
+
+-- Legacy compatibility table view/table if needed
+CREATE TABLE IF NOT EXISTS public.app_users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT,
+  display_name TEXT NOT NULL DEFAULT 'Staff Member',
+  role TEXT NOT NULL DEFAULT 'staff' CHECK (role IN ('admin', 'staff')),
+  outlet TEXT NOT NULL DEFAULT 'Main Branch',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- ==============================================================================
 -- 2. STAFF MASTER & RECORD TABLES
@@ -118,7 +131,7 @@ CREATE TABLE IF NOT EXISTS store_profile (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Keep-Alive & Heartbeat Table
+-- 7. Keep-Alive & Heartbeat Table (Always Public for Uptime Monitoring)
 CREATE TABLE IF NOT EXISTS keep_alive_pings (
   id TEXT PRIMARY KEY DEFAULT 'primary_heartbeat',
   last_ping TIMESTAMPTZ DEFAULT NOW(),
@@ -137,8 +150,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_app_users_updated_at ON public.app_users;
-CREATE TRIGGER trg_app_users_updated_at BEFORE UPDATE ON public.app_users FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
+DROP TRIGGER IF EXISTS trg_user_profiles_updated_at ON public.user_profiles;
+CREATE TRIGGER trg_user_profiles_updated_at BEFORE UPDATE ON public.user_profiles FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 
 DROP TRIGGER IF EXISTS trg_staff_updated_at ON staff;
 CREATE TRIGGER trg_staff_updated_at BEFORE UPDATE ON staff FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
@@ -158,9 +171,44 @@ CREATE TRIGGER trg_daily_wages_updated_at BEFORE UPDATE ON daily_wages FOR EACH 
 DROP TRIGGER IF EXISTS trg_store_profile_updated_at ON store_profile;
 CREATE TRIGGER trg_store_profile_updated_at BEFORE UPDATE ON store_profile FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 
+-- Automatically create / sync public.user_profiles whenever an auth.users record is created
+CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_username TEXT;
+  v_name TEXT;
+  v_role TEXT;
+  v_outlet TEXT;
+BEGIN
+  v_username := COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1));
+  v_name := COALESCE(NEW.raw_user_meta_data->>'display_name', NEW.raw_user_meta_data->>'name', v_username);
+  v_role := COALESCE(NEW.raw_user_meta_data->>'role', 'staff');
+  v_outlet := COALESCE(NEW.raw_user_meta_data->>'outlet', 'Main Branch');
+
+  INSERT INTO public.user_profiles (id, username, display_name, role, outlet)
+  VALUES (NEW.id, LOWER(v_username), v_name, v_role, v_outlet)
+  ON CONFLICT (id) DO UPDATE
+  SET username = EXCLUDED.username,
+      display_name = EXCLUDED.display_name,
+      role = EXCLUDED.role,
+      outlet = EXCLUDED.outlet,
+      updated_at = NOW();
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT OR UPDATE ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
+
 -- ==============================================================================
--- 4. ROW LEVEL SECURITY (RLS) & ACCESS POLICIES
+-- 4. STRICT ROW LEVEL SECURITY (RLS) & ACCESS POLICIES
 -- ==============================================================================
+
+-- Enable RLS on all tables
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
@@ -170,92 +218,124 @@ ALTER TABLE daily_wages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE store_profile ENABLE ROW LEVEL SECURITY;
 ALTER TABLE keep_alive_pings ENABLE ROW LEVEL SECURITY;
 
--- App Users Policies
+-- ------------------------------------------------------------------------------
+-- A. User Profiles Policies
+-- ------------------------------------------------------------------------------
 DROP POLICY IF EXISTS "Public app_users select safe" ON public.app_users;
-CREATE POLICY "Public app_users select safe" ON public.app_users FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Public app_users insert" ON public.app_users;
-CREATE POLICY "Public app_users insert" ON public.app_users FOR INSERT WITH CHECK (true);
-
 DROP POLICY IF EXISTS "Public app_users update" ON public.app_users;
-CREATE POLICY "Public app_users update" ON public.app_users FOR UPDATE USING (true) WITH CHECK (true);
-
 DROP POLICY IF EXISTS "Public app_users delete" ON public.app_users;
-CREATE POLICY "Public app_users delete" ON public.app_users FOR DELETE USING (true);
 
--- Application Data Policies
+DROP POLICY IF EXISTS "Authenticated users view profiles" ON public.user_profiles;
+CREATE POLICY "Authenticated users view profiles"
+  ON public.user_profiles FOR SELECT
+  TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "Users can update own profile" ON public.user_profiles;
+CREATE POLICY "Users can update own profile"
+  ON public.user_profiles FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+-- ------------------------------------------------------------------------------
+-- B. Business Data Policies (Locked to Authenticated Users)
+-- ------------------------------------------------------------------------------
+-- Staff Master
 DROP POLICY IF EXISTS "Public staff all" ON staff;
-CREATE POLICY "Public staff all" ON staff FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Authenticated staff all" ON staff;
+CREATE POLICY "Authenticated staff all"
+  ON staff FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
+-- Attendance Records
 DROP POLICY IF EXISTS "Public attendance all" ON attendance;
-CREATE POLICY "Public attendance all" ON attendance FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Authenticated attendance all" ON attendance;
+CREATE POLICY "Authenticated attendance all"
+  ON attendance FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
+-- Overtime Records
 DROP POLICY IF EXISTS "Public overtime all" ON overtime;
-CREATE POLICY "Public overtime all" ON overtime FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Authenticated overtime all" ON overtime;
+CREATE POLICY "Authenticated overtime all"
+  ON overtime FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
+-- Cash Advances
 DROP POLICY IF EXISTS "Public advances all" ON advances;
-CREATE POLICY "Public advances all" ON advances FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Authenticated advances all" ON advances;
+CREATE POLICY "Authenticated advances all"
+  ON advances FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
+-- Daily Wage Overrides
 DROP POLICY IF EXISTS "Public daily_wages all" ON daily_wages;
-CREATE POLICY "Public daily_wages all" ON daily_wages FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Authenticated daily_wages all" ON daily_wages;
+CREATE POLICY "Authenticated daily_wages all"
+  ON daily_wages FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
+-- Store Profile & Settings
 DROP POLICY IF EXISTS "Public store_profile all" ON store_profile;
-CREATE POLICY "Public store_profile all" ON store_profile FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public read store_profile" ON store_profile;
+DROP POLICY IF EXISTS "Authenticated write store_profile" ON store_profile;
 
+-- Public can read store branding for login view
+CREATE POLICY "Public read store_profile"
+  ON store_profile FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+-- Only authenticated users can update store branding
+CREATE POLICY "Authenticated write store_profile"
+  ON store_profile FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- ------------------------------------------------------------------------------
+-- C. KEEP-ALIVE & HEARTBEAT (OPEN TO ANON & UPTIMEROBOT)
+-- ------------------------------------------------------------------------------
 DROP POLICY IF EXISTS "Public keep_alive all" ON keep_alive_pings;
-CREATE POLICY "Public keep_alive all" ON keep_alive_pings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public keep_alive all"
+  ON keep_alive_pings FOR ALL
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
 
 -- ==============================================================================
--- 5. AUTHENTICATION & USER MANAGEMENT RPC FUNCTIONS
+-- 5. SECURE RPC FUNCTIONS (SECURITY DEFINER)
 -- ==============================================================================
 
--- 1. App Login (Verify Username & Password)
-CREATE OR REPLACE FUNCTION public.app_login(
-  p_username TEXT,
-  p_password TEXT
-)
-RETURNS JSON AS $$
-DECLARE
-  v_user RECORD;
-  clean_uname TEXT;
+-- 1. Heartbeat Function for Keep-Alive (Callable by UptimeRobot anonymously)
+CREATE OR REPLACE FUNCTION ping_heartbeat()
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-  clean_uname := LOWER(TRIM(p_username));
-  
-  IF clean_uname = '' OR p_password = '' THEN
-    RETURN json_build_object('success', false, 'error', 'Username and password are required.');
-  END IF;
-
-  SELECT id, username, password_hash, display_name, role, outlet, created_at, updated_at
-  INTO v_user
-  FROM public.app_users
-  WHERE LOWER(username) = clean_uname;
-
-  IF NOT FOUND THEN
-    RETURN json_build_object('success', false, 'error', 'Invalid username or password.');
-  END IF;
-
-  -- Check password hash using pgcrypto crypt
-  IF v_user.password_hash != crypt(p_password, v_user.password_hash) THEN
-    RETURN json_build_object('success', false, 'error', 'Invalid username or password.');
-  END IF;
-
-  RETURN json_build_object(
-    'success', true,
-    'user', json_build_object(
-      'id', v_user.id,
-      'username', v_user.username,
-      'displayName', v_user.display_name,
-      'role', v_user.role,
-      'outlet', v_user.outlet,
-      'createdAt', v_user.created_at,
-      'updatedAt', v_user.updated_at
-    )
-  );
+  INSERT INTO keep_alive_pings (id, last_ping, client_info, ping_count)
+  VALUES ('primary_heartbeat', NOW(), 'uptime_robot_heartbeat', 1)
+  ON CONFLICT (id) DO UPDATE
+  SET last_ping = NOW(),
+      ping_count = keep_alive_pings.ping_count + 1;
+  RETURN json_build_object('status', 'ok', 'timestamp', NOW());
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
--- 2. Create User (Hashed Password)
-CREATE OR REPLACE FUNCTION public.app_create_user(
+GRANT EXECUTE ON FUNCTION ping_heartbeat() TO anon, authenticated;
+
+-- 2. Admin Create User Account in Supabase Auth
+CREATE OR REPLACE FUNCTION public.admin_create_app_user(
   p_username TEXT,
   p_password TEXT,
   p_name TEXT,
@@ -264,13 +344,20 @@ CREATE OR REPLACE FUNCTION public.app_create_user(
 )
 RETURNS JSON AS $$
 DECLARE
-  v_id UUID;
+  v_caller_role TEXT;
+  v_email TEXT;
+  v_user_id UUID;
   clean_uname TEXT;
   clean_name TEXT;
   clean_role TEXT;
   clean_outlet TEXT;
-  hashed_pw TEXT;
 BEGIN
+  -- Verify caller is admin
+  SELECT role INTO v_caller_role FROM public.user_profiles WHERE id = auth.uid();
+  IF v_caller_role != 'admin' THEN
+    RETURN json_build_object('success', false, 'error', 'Unauthorized. Only administrators can create users.');
+  END IF;
+
   clean_uname := LOWER(TRIM(p_username));
   clean_name := TRIM(p_name);
   clean_role := LOWER(TRIM(p_role));
@@ -280,8 +367,8 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'Username cannot be empty.');
   END IF;
 
-  IF LENGTH(p_password) < 4 THEN
-    RETURN json_build_object('success', false, 'error', 'Password must be at least 4 characters.');
+  IF LENGTH(p_password) < 6 THEN
+    RETURN json_build_object('success', false, 'error', 'Password must be at least 6 characters.');
   END IF;
 
   IF clean_role NOT IN ('admin', 'staff') THEN
@@ -292,93 +379,125 @@ BEGIN
     clean_name := clean_uname;
   END IF;
 
-  IF clean_outlet = '' THEN
-    clean_outlet := 'Main Branch';
+  v_email := clean_uname || '@hotelbilal.app';
+
+  -- Check if user already exists
+  SELECT id INTO v_user_id FROM public.user_profiles WHERE username = clean_uname;
+  IF FOUND THEN
+    RETURN json_build_object('success', false, 'error', 'A user with this username already exists.');
   END IF;
 
-  hashed_pw := crypt(p_password, gen_salt('bf', 8));
-
-  INSERT INTO public.app_users (username, password_hash, display_name, role, outlet)
-  VALUES (clean_uname, hashed_pw, clean_name, clean_role, clean_outlet)
-  ON CONFLICT (username) DO UPDATE
-  SET password_hash = EXCLUDED.password_hash,
-      display_name = EXCLUDED.display_name,
-      role = EXCLUDED.role,
-      outlet = EXCLUDED.outlet,
-      updated_at = NOW()
-  RETURNING id INTO v_id;
+  -- Create user in auth.users
+  INSERT INTO auth.users (
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    '00000000-0000-0000-0000-000000000000',
+    gen_random_uuid(),
+    'authenticated',
+    'authenticated',
+    v_email,
+    crypt(p_password, gen_salt('bf')),
+    NOW(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    json_build_object('username', clean_uname, 'display_name', clean_name, 'role', clean_role, 'outlet', clean_outlet)::jsonb,
+    NOW(),
+    NOW()
+  )
+  RETURNING id INTO v_user_id;
 
   RETURN json_build_object(
     'success', true,
     'user', json_build_object(
-      'id', v_id,
+      'id', v_user_id,
       'username', clean_uname,
       'displayName', clean_name,
       'role', clean_role,
       'outlet', clean_outlet
-    ),
-    'message', 'User provisioned successfully'
+    )
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 3. Change User Password
-CREATE OR REPLACE FUNCTION public.app_change_password(
+GRANT EXECUTE ON FUNCTION public.admin_create_app_user(TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+
+-- 3. Admin Reset Any User's Password
+CREATE OR REPLACE FUNCTION public.admin_reset_user_password(
   p_user_id UUID,
   p_new_password TEXT
 )
 RETURNS JSON AS $$
 DECLARE
-  hashed_pw TEXT;
+  v_caller_role TEXT;
 BEGIN
-  IF LENGTH(p_new_password) < 4 THEN
-    RETURN json_build_object('success', false, 'error', 'Password must be at least 4 characters.');
+  -- Verify caller is admin
+  SELECT role INTO v_caller_role FROM public.user_profiles WHERE id = auth.uid();
+  IF v_caller_role != 'admin' THEN
+    RETURN json_build_object('success', false, 'error', 'Unauthorized: Only admins can reset passwords.');
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM public.app_users WHERE id = p_user_id) THEN
-    RETURN json_build_object('success', false, 'error', 'User not found.');
+  IF LENGTH(p_new_password) < 6 THEN
+    RETURN json_build_object('success', false, 'error', 'Password must be at least 6 characters.');
   END IF;
 
-  hashed_pw := crypt(p_new_password, gen_salt('bf', 8));
-
-  UPDATE public.app_users
-  SET password_hash = hashed_pw,
+  UPDATE auth.users
+  SET encrypted_password = crypt(p_new_password, gen_salt('bf')),
       updated_at = NOW()
   WHERE id = p_user_id;
 
-  RETURN json_build_object('success', true, 'message', 'Password updated successfully');
+  RETURN json_build_object('success', true, 'message', 'Password reset successfully.');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 4. Delete User
-CREATE OR REPLACE FUNCTION public.app_delete_user(
+GRANT EXECUTE ON FUNCTION public.admin_reset_user_password(UUID, TEXT) TO authenticated;
+
+-- 4. Admin Delete User Account
+CREATE OR REPLACE FUNCTION public.admin_delete_app_user(
   p_user_id UUID
 )
 RETURNS JSON AS $$
 DECLARE
-  v_role TEXT;
+  v_caller_role TEXT;
+  v_target_role TEXT;
   admin_count INT;
 BEGIN
-  SELECT role INTO v_role FROM public.app_users WHERE id = p_user_id;
-  
-  IF NOT FOUND THEN
-    RETURN json_build_object('success', false, 'error', 'User not found.');
+  SELECT role INTO v_caller_role FROM public.user_profiles WHERE id = auth.uid();
+  IF v_caller_role != 'admin' THEN
+    RETURN json_build_object('success', false, 'error', 'Unauthorized.');
   END IF;
 
-  IF v_role = 'admin' THEN
-    SELECT COUNT(*) INTO admin_count FROM public.app_users WHERE role = 'admin';
+  IF p_user_id = auth.uid() THEN
+    RETURN json_build_object('success', false, 'error', 'Cannot delete your own active administrator account.');
+  END IF;
+
+  SELECT role INTO v_target_role FROM public.user_profiles WHERE id = p_user_id;
+  IF v_target_role = 'admin' THEN
+    SELECT COUNT(*) INTO admin_count FROM public.user_profiles WHERE role = 'admin';
     IF admin_count <= 1 THEN
-      RETURN json_build_object('success', false, 'error', 'Cannot delete the only admin user.');
+      RETURN json_build_object('success', false, 'error', 'Cannot delete the only administrator.');
     END IF;
   END IF;
 
-  DELETE FROM public.app_users WHERE id = p_user_id;
+  DELETE FROM auth.users WHERE id = p_user_id;
+  DELETE FROM public.user_profiles WHERE id = p_user_id;
 
-  RETURN json_build_object('success', true, 'message', 'User deleted successfully');
+  RETURN json_build_object('success', true, 'message', 'User deleted successfully.');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 5. List All Users (Safe - No password hashes returned)
+GRANT EXECUTE ON FUNCTION public.admin_delete_app_user(UUID) TO authenticated;
+
+-- 5. List All Users (Safe)
 CREATE OR REPLACE FUNCTION public.app_list_users()
 RETURNS TABLE (
   id UUID,
@@ -392,30 +511,19 @@ RETURNS TABLE (
 BEGIN
   RETURN QUERY
   SELECT 
-    u.id,
-    u.username,
-    u.display_name,
-    u.role,
-    u.outlet,
-    u.created_at,
-    u.updated_at
-  FROM public.app_users u
-  ORDER BY (u.role = 'admin') DESC, u.display_name ASC;
+    p.id,
+    p.username,
+    p.display_name,
+    p.role,
+    p.outlet,
+    p.created_at,
+    p.updated_at
+  FROM public.user_profiles p
+  ORDER BY (p.role = 'admin') DESC, p.display_name ASC;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 6. Heartbeat Function for Keep-Alive
-CREATE OR REPLACE FUNCTION ping_heartbeat()
-RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  INSERT INTO keep_alive_pings (id, last_ping, client_info, ping_count)
-  VALUES ('primary_heartbeat', NOW(), 'app_heartbeat', 1)
-  ON CONFLICT (id) DO UPDATE
-  SET last_ping = NOW(),
-      ping_count = keep_alive_pings.ping_count + 1;
-  RETURN json_build_object('status', 'ok', 'timestamp', NOW());
-END;
-$$;
+GRANT EXECUTE ON FUNCTION public.app_list_users() TO authenticated;
 
 -- ==============================================================================
 -- 6. SUPABASE STORAGE BUCKET FOR ASSETS & LOGOS
@@ -430,21 +538,57 @@ ON storage.objects FOR SELECT
 USING (bucket_id = 'store-assets');
 
 DROP POLICY IF EXISTS "Public Upload store-assets" ON storage.objects;
-CREATE POLICY "Public Upload store-assets"
+DROP POLICY IF EXISTS "Authenticated Upload store-assets" ON storage.objects;
+CREATE POLICY "Authenticated Upload store-assets"
 ON storage.objects FOR INSERT
+TO authenticated
 WITH CHECK (bucket_id = 'store-assets');
 
 DROP POLICY IF EXISTS "Public Update store-assets" ON storage.objects;
-CREATE POLICY "Public Update store-assets"
+DROP POLICY IF EXISTS "Authenticated Update store-assets" ON storage.objects;
+CREATE POLICY "Authenticated Update store-assets"
 ON storage.objects FOR UPDATE
+TO authenticated
 USING (bucket_id = 'store-assets');
 
 DROP POLICY IF EXISTS "Public Delete store-assets" ON storage.objects;
-CREATE POLICY "Public Delete store-assets"
+DROP POLICY IF EXISTS "Authenticated Delete store-assets" ON storage.objects;
+CREATE POLICY "Authenticated Delete store-assets"
 ON storage.objects FOR DELETE
+TO authenticated
 USING (bucket_id = 'store-assets');
 
 -- ==============================================================================
--- 7. INITIAL ADMIN CREATION EXAMPLE (Run in Supabase SQL Editor if needed)
+-- 7. INITIAL ADMIN CREATION HELPER FUNCTION
 -- ==============================================================================
--- SELECT public.app_create_user('admin', 'admin123456', 'Super Administrator', 'admin', 'All Branches');
+-- Run this once in the Supabase SQL Editor if you need to create your initial admin account:
+--
+-- CREATE OR REPLACE FUNCTION public.seed_admin_account(
+--   p_username TEXT,
+--   p_password TEXT,
+--   p_name TEXT
+-- )
+-- RETURNS JSON AS $$
+-- DECLARE
+--   v_email TEXT;
+--   v_user_id UUID;
+-- BEGIN
+--   v_email := LOWER(TRIM(p_username)) || '@hotelbilal.app';
+--   INSERT INTO auth.users (
+--     instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+--     raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+--   )
+--   VALUES (
+--     '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated',
+--     v_email, crypt(p_password, gen_salt('bf')), NOW(),
+--     '{"provider":"email","providers":["email"]}'::jsonb,
+--     json_build_object('username', LOWER(TRIM(p_username)), 'display_name', TRIM(p_name), 'role', 'admin', 'outlet', 'All Branches')::jsonb,
+--     NOW(), NOW()
+--   )
+--   RETURNING id INTO v_user_id;
+--   RETURN json_build_object('success', true, 'id', v_user_id);
+-- END;
+-- $$ LANGUAGE plpgsql SECURITY DEFINER;
+--
+-- Example execution:
+-- SELECT public.seed_admin_account('admin', 'admin123456', 'Super Administrator');
