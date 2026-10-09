@@ -3,6 +3,13 @@ import { Printer, Users, Receipt, Calendar, Download, FileSpreadsheet } from 'lu
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import type { Staff, StoreProfile } from '@/types/attendance'
 import {
   formatDate,
@@ -255,18 +262,21 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
               <Users className="w-3.5 h-3.5" />
               <span>Staff Member:</span>
             </label>
-            <select
-              aria-label="Select staff member for payslip"
-              value={selectedStaffId}
-              onChange={(e) => setSelectedStaffId(e.target.value)}
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 py-1 text-sm shadow-xs font-medium text-foreground cursor-pointer"
+            <Select
+              value={selectedStaffId || (staffList[0]?.id || '')}
+              onValueChange={(val) => setSelectedStaffId(val as string)}
             >
-              {staffList.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.id} - {s.name} ({s.dept})
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full h-9 bg-background border-border text-sm font-medium">
+                <SelectValue placeholder="Select Staff Member" />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                {staffList.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.id} - {s.name} ({s.dept})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAttendanceData } from './hooks/useAttendanceData'
+import { useAuth } from './hooks/useAuth'
 import { DesktopSidebar } from './components/layout/DesktopSidebar'
 import { MobileHeader } from './components/layout/MobileHeader'
 import { FilterBar } from './components/layout/FilterBar'
@@ -12,13 +13,30 @@ import { StaffTab } from './components/staff/StaffTab'
 import { ReportTab } from './components/report/ReportTab'
 import { PayslipTab } from './components/payslip/PayslipTab'
 import { SettingsTab } from './components/settings/SettingsTab'
+import { LoginView } from './components/auth/LoginView'
+import { ChangePasswordModal } from './components/settings/ChangePasswordModal'
 import { StaffModal } from './components/modals/StaffModal'
 import { AttendanceEditModal } from './components/modals/AttendanceEditModal'
 import { StaffActionSheet } from './components/modals/StaffActionSheet'
 import { exportPayrollCsv } from './lib/attendanceUtils'
+import { RefreshCw } from 'lucide-react'
 import type { Staff } from './types/attendance'
 
 export function App() {
+  const {
+    user,
+    profile,
+    isAdmin,
+    isLoading: isAuthLoading,
+    login,
+    logout,
+    changeMyPassword,
+    adminCreateUser,
+    adminChangeUserPassword,
+    adminDeleteUser,
+    fetchUsersList
+  } = useAuth()
+
   const {
     today,
     theme,
@@ -77,6 +95,9 @@ export function App() {
   const [actionSheetStaff, setActionSheetStaff] = useState<Staff | null>(null)
   const [actionSheetDate, setActionSheetDate] = useState<string>(today)
 
+  // Self Change Password Modal
+  const [isSelfPasswordModalOpen, setIsSelfPasswordModalOpen] = useState<boolean>(false)
+
   // Handlers
   const handleOpenAddStaff = () => {
     setEditingStaff(null)
@@ -115,6 +136,29 @@ export function App() {
     exportPayrollCsv(staffList, activeDates)
   }
 
+  // 1. Initial Loading Spinner during auth resolution
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background text-foreground space-y-3">
+        <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
+        <p className="text-xs text-muted-foreground font-medium animate-pulse">
+          Connecting to secure server...
+        </p>
+      </div>
+    )
+  }
+
+  // 2. Lock behind Login Screen if not authenticated
+  if (!user) {
+    return (
+      <LoginView
+        storeProfile={storeProfile}
+        onLogin={login}
+      />
+    )
+  }
+
+  // 3. Authenticated App Layout
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row antialiased selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-200">
       {/* Desktop Fixed Left Sidebar */}
@@ -124,148 +168,155 @@ export function App() {
         storeProfile={storeProfile}
         fromDate={fromDate}
         toDate={toDate}
+        onSetPeriod={handleSetPeriod}
         theme={theme}
         onToggleTheme={toggleTheme}
         onExportCsv={handleExportCsv}
-        onManualSync={pushToSupabase}
-        isSyncing={isSyncing}
-        isSupabaseConnected={isSupabaseConnected}
-        supabaseLatency={supabaseLatency}
+        currentUserProfile={profile}
+        onOpenChangePassword={() => setIsSelfPasswordModalOpen(true)}
+        onLogout={logout}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 md:pl-64 lg:pl-72">
         {/* Mobile Header with Hamburger Menu (Visible on Mobile only) */}
-        <div className="md:hidden sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border/80">
+        <div className="md:hidden">
           <MobileHeader
             activeTab={activeTab}
             onTabChange={setActiveTab}
             storeProfile={storeProfile}
             fromDate={fromDate}
             toDate={toDate}
+            onSetPeriod={handleSetPeriod}
             theme={theme}
             onToggleTheme={toggleTheme}
             onExportCsv={handleExportCsv}
-            onManualSync={pushToSupabase}
-            isSyncing={isSyncing}
             isSupabaseConnected={isSupabaseConnected}
-            supabaseLatency={supabaseLatency}
+            currentUserProfile={profile}
+            onOpenChangePassword={() => setIsSelfPasswordModalOpen(true)}
+            onLogout={logout}
           />
         </div>
 
         <main className="w-full max-w-7xl mx-auto p-3 sm:p-6 lg:p-8 space-y-5 pb-24 md:pb-12 flex-1">
-
-        {/* Global Filter Bar */}
-        {activeTab !== 'payslip' && activeTab !== 'settings' && (
-          <FilterBar
-            activeTab={activeTab}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            departmentFilter={departmentFilter}
-            onDepartmentChange={setDepartmentFilter}
-            departments={departments}
-            outletFilter={outletFilter}
-            onOutletChange={setOutletFilter}
-            outlets={outlets}
-            markFilter={markFilter}
-            onMarkFilterChange={setMarkFilter}
-            dates={activeDates}
-            onReset={resetFilters}
-          />
-        )}
-
-        {/* Active Tab View */}
-        <section className="transition-all duration-150">
-          {activeTab === 'dashboard' && (
-            <DashboardTab staffList={filteredStaffList} dates={activeDates} />
-          )}
-
-          {activeTab === 'attendance' && (
-            <AttendanceTab
-              staffList={filteredStaffList}
+          {/* Global Filter Bar */}
+          {activeTab !== 'payslip' && activeTab !== 'settings' && (
+            <FilterBar
+              activeTab={activeTab}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              departmentFilter={departmentFilter}
+              onDepartmentChange={setDepartmentFilter}
+              departments={departments}
+              outletFilter={outletFilter}
+              onOutletChange={setOutletFilter}
+              outlets={outlets}
+              markFilter={markFilter}
+              onMarkFilterChange={setMarkFilter}
               dates={activeDates}
-              fromDate={fromDate}
-              toDate={toDate}
-              today={today}
-              onSetPeriod={handleSetPeriod}
-              onUpdateAttendance={updateAttendance}
-              onUpdateWage={updateUsualWage}
-              onOpenAttendanceEdit={handleOpenAttendanceEdit}
-              onOpenStaffActionSheet={handleOpenActionSheet}
+              onReset={resetFilters}
             />
           )}
 
-          {activeTab === 'overtime' && (
-            <OvertimeTab
-              staffList={filteredStaffList}
-              entryDate={entryDate}
-              onEntryDateChange={setEntryDate}
-              onUpdateOvertime={updateOvertime}
-            />
-          )}
+          {/* Active Tab View */}
+          <section className="transition-all duration-150">
+            {activeTab === 'dashboard' && (
+              <DashboardTab staffList={filteredStaffList} dates={activeDates} />
+            )}
 
-          {activeTab === 'dailywage' && (
-            <DailyWageTab
-              staffList={filteredStaffList}
-              entryDate={entryDate}
-              onEntryDateChange={setEntryDate}
-              onUpdateDailyWage={updateDailyWage}
-            />
-          )}
+            {activeTab === 'attendance' && (
+              <AttendanceTab
+                staffList={filteredStaffList}
+                dates={activeDates}
+                fromDate={fromDate}
+                toDate={toDate}
+                today={today}
+                onSetPeriod={handleSetPeriod}
+                onUpdateAttendance={updateAttendance}
+                onUpdateWage={updateUsualWage}
+                onOpenAttendanceEdit={handleOpenAttendanceEdit}
+                onOpenStaffActionSheet={handleOpenActionSheet}
+              />
+            )}
 
-          {activeTab === 'advance' && (
-            <AdvanceTab
-              staffList={filteredStaffList}
-              entryDate={entryDate}
-              onEntryDateChange={setEntryDate}
-              onUpdateAdvance={updateAdvance}
-            />
-          )}
+            {activeTab === 'overtime' && (
+              <OvertimeTab
+                staffList={filteredStaffList}
+                entryDate={entryDate}
+                onEntryDateChange={setEntryDate}
+                onUpdateOvertime={updateOvertime}
+              />
+            )}
 
-          {activeTab === 'staff' && (
-            <StaffTab
-              staffList={filteredStaffList}
-              onOpenAddStaff={handleOpenAddStaff}
-              onOpenEditStaff={handleOpenEditStaff}
-              onDeleteStaff={deleteStaff}
-              onOpenStaffActionSheet={handleOpenActionSheet}
-            />
-          )}
+            {activeTab === 'dailywage' && (
+              <DailyWageTab
+                staffList={filteredStaffList}
+                entryDate={entryDate}
+                onEntryDateChange={setEntryDate}
+                onUpdateDailyWage={updateDailyWage}
+              />
+            )}
 
-          {activeTab === 'report' && (
-            <ReportTab
-              staffList={filteredStaffList}
-              dates={activeDates}
-              fromDate={fromDate}
-              toDate={toDate}
-            />
-          )}
+            {activeTab === 'advance' && (
+              <AdvanceTab
+                staffList={filteredStaffList}
+                entryDate={entryDate}
+                onEntryDateChange={setEntryDate}
+                onUpdateAdvance={updateAdvance}
+              />
+            )}
 
-          {activeTab === 'payslip' && (
-            <PayslipTab
-              staffList={staffList}
-              storeProfile={storeProfile}
-              payslipMonth={payslipMonth}
-              onMonthChange={setPayslipMonth}
-            />
-          )}
+            {activeTab === 'staff' && (
+              <StaffTab
+                staffList={filteredStaffList}
+                onOpenAddStaff={handleOpenAddStaff}
+                onOpenEditStaff={handleOpenEditStaff}
+                onDeleteStaff={deleteStaff}
+                onOpenStaffActionSheet={handleOpenActionSheet}
+              />
+            )}
 
-          {activeTab === 'settings' && (
-            <SettingsTab
-              storeProfile={storeProfile}
-              staffList={staffList}
-              onSaveProfile={setStoreProfile}
-              onRenameOutlet={renameOutlet}
-              onManualSync={pushToSupabase}
-              onPullFromSupabase={pullFromSupabase}
-              isSyncing={isSyncing}
-              isSupabaseConnected={isSupabaseConnected}
-              supabaseLatency={supabaseLatency}
-            />
-          )}
-        </section>
-      </main>
-    </div>
+            {activeTab === 'report' && (
+              <ReportTab
+                staffList={filteredStaffList}
+                dates={activeDates}
+                fromDate={fromDate}
+                toDate={toDate}
+              />
+            )}
+
+            {activeTab === 'payslip' && (
+              <PayslipTab
+                staffList={staffList}
+                storeProfile={storeProfile}
+                payslipMonth={payslipMonth}
+                onMonthChange={setPayslipMonth}
+              />
+            )}
+
+            {activeTab === 'settings' && (
+              <SettingsTab
+                storeProfile={storeProfile}
+                staffList={staffList}
+                currentUserProfile={profile}
+                isAdmin={isAdmin}
+                onSaveProfile={setStoreProfile}
+                onRenameOutlet={renameOutlet}
+                onManualSync={pushToSupabase}
+                onPullFromSupabase={pullFromSupabase}
+                fetchUsersList={fetchUsersList}
+                onAdminCreateUser={adminCreateUser}
+                onAdminChangePassword={adminChangeUserPassword}
+                onAdminDeleteUser={adminDeleteUser}
+                onChangeMyPassword={changeMyPassword}
+                isSyncing={isSyncing}
+                isSupabaseConnected={isSupabaseConnected}
+                supabaseLatency={supabaseLatency}
+              />
+            )}
+          </section>
+        </main>
+      </div>
 
       {/* Mobile Staff Action Sheet */}
       <StaffActionSheet
@@ -298,8 +349,17 @@ export function App() {
         date={attendanceEditDate}
         onSave={updateAttendance}
       />
+
+      {/* Self Password Change Modal */}
+      <ChangePasswordModal
+        isOpen={isSelfPasswordModalOpen}
+        onClose={() => setIsSelfPasswordModalOpen(false)}
+        targetUser={null}
+        onChangePassword={(newPassword) => changeMyPassword(newPassword)}
+      />
     </div>
   )
 }
 
 export default App
+

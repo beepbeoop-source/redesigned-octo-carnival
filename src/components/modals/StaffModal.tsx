@@ -6,6 +6,13 @@ import {
   DialogTitle,
   DialogFooter
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -90,7 +97,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
         id: id.trim(),
         name: name.trim(),
         dept: dept.trim() || 'Other',
-        outlet: outlet.trim(),
+        outlet: outlet.trim() || 'Main Branch',
         designation: designation.trim() || '-',
         status,
         wage: wage.trim() || '0',
@@ -142,16 +149,19 @@ export const StaffModal: React.FC<StaffModalProps> = ({
               <Label htmlFor="staff-status" className="text-xs">
                 Status
               </Label>
-              <select
-                id="staff-status"
+              <Select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as StaffStatus)}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs font-medium"
+                onValueChange={(val) => setStatus(val as StaffStatus)}
               >
-                <option value="Working">Working</option>
-                <option value="Active">Active</option>
-                <option value="Left">Left</option>
-              </select>
+                <SelectTrigger className="w-full h-9 bg-background border-border/80 text-xs">
+                  <SelectValue placeholder="Select Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Working">Working</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Left">Left</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -187,19 +197,21 @@ export const StaffModal: React.FC<StaffModalProps> = ({
               <Label htmlFor="staff-outlet" className="text-xs font-semibold">
                 Branch / Outlet <span className="text-rose-500">*</span>
               </Label>
-              <select
-                id="staff-outlet"
-                value={outlet}
-                onChange={(e) => setOutlet(e.target.value)}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                required
+              <Select
+                value={outlet || availableOutlets[0] || 'Main Branch'}
+                onValueChange={(val) => setOutlet(val as string)}
               >
-                {availableOutlets.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full h-9 bg-background border-border/80 text-xs">
+                  <SelectValue placeholder="Select Branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableOutlets.map((o) => (
+                    <SelectItem key={o} value={o}>
+                      {o}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -221,15 +233,18 @@ export const StaffModal: React.FC<StaffModalProps> = ({
               <Label htmlFor="staff-salary-type" className="text-xs">
                 Salary Type
               </Label>
-              <select
-                id="staff-salary-type"
+              <Select
                 value={salaryType}
-                onChange={(e) => setSalaryType(e.target.value as 'fixed' | 'variable')}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs font-medium"
+                onValueChange={(val) => setSalaryType(val as 'fixed' | 'variable')}
               >
-                <option value="fixed">Fixed daily wage</option>
-                <option value="variable">Changes by date</option>
-              </select>
+                <SelectTrigger className="w-full h-9 bg-background border-border/80 text-xs">
+                  <SelectValue placeholder="Salary Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fixed">Fixed daily wage</SelectItem>
+                  <SelectItem value="variable">Changes by date</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">

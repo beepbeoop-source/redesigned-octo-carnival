@@ -72,3 +72,16 @@ export interface GroupSummary {
   adv: number
   net: number
 }
+
+export type UserRole = 'admin' | 'staff'
+
+export interface UserProfile {
+  id: string
+  username: string
+  displayName: string
+  role: UserRole
+  outlet?: string
+  createdAt?: string
+  updatedAt?: string
+}
+

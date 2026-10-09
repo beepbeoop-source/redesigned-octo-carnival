@@ -4,8 +4,6 @@ import {
   Sun,
   Moon,
   Download,
-  RefreshCw,
-  Calendar,
   LayoutDashboard,
   CalendarCheck,
   Clock,
@@ -14,7 +12,11 @@ import {
   Users,
   FileSpreadsheet,
   Receipt,
-  Settings
+  Settings,
+  LogOut,
+  KeyRound,
+  ShieldCheck,
+  UserCheck
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,8 +25,9 @@ import {
   SheetHeader,
   SheetTitle
 } from '@/components/ui/sheet'
-import type { TabType, StoreProfile } from '@/types/attendance'
+import type { TabType, StoreProfile, UserProfile } from '@/types/attendance'
 import { formatDate } from '@/lib/attendanceUtils'
+import { PeriodRangePicker } from './PeriodRangePicker'
 import { cn } from '@/lib/utils'
 
 interface MobileHeaderProps {
@@ -33,13 +36,14 @@ interface MobileHeaderProps {
   storeProfile: StoreProfile
   fromDate: string
   toDate: string
+  onSetPeriod: (from: string, to: string) => void
   theme: 'light' | 'dark'
   onToggleTheme: () => void
   onExportCsv: () => void
-  onManualSync: () => void
-  isSyncing: boolean
   isSupabaseConnected: boolean
-  supabaseLatency: number | null
+  currentUserProfile?: UserProfile | null
+  onOpenChangePassword?: () => void
+  onLogout?: () => void
 }
 
 const NAV_ITEMS: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -60,13 +64,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   storeProfile,
   fromDate,
   toDate,
+  onSetPeriod,
   theme,
   onToggleTheme,
   onExportCsv,
-  onManualSync,
-  isSyncing,
   isSupabaseConnected,
-  supabaseLatency
+  currentUserProfile,
+  onOpenChangePassword,
+  onLogout
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
@@ -80,22 +85,24 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     setIsDrawerOpen(false)
   }
 
+  const isAdmin = currentUserProfile?.role === 'admin'
+
   return (
     <>
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border/80 px-3.5 py-2.5 pt-safe flex items-center justify-between shadow-xs -mx-3 -mt-3 sm:mx-0 sm:mt-0 rounded-b-xl sm:rounded-none">
-        {/* Hamburger Trigger */}
-        <div className="flex items-center gap-2.5">
+      <header className="sticky top-0 z-40 w-full bg-background/95 backdrop-blur-md border-b border-border/80 px-3 py-2 pt-[max(0.625rem,env(safe-area-inset-top))] flex items-center justify-between shadow-xs">
+        {/* Hamburger Trigger & Title */}
+        <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsDrawerOpen(true)}
-            className="h-9 w-9 p-0 rounded-xl hover:bg-muted text-foreground"
+            className="h-9 w-9 p-0 rounded-xl hover:bg-muted text-foreground shrink-0"
             aria-label="Open Navigation Menu"
           >
             <Menu className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           </Button>
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-sm font-bold text-foreground truncate leading-tight">
               {storeProfile.name || 'Hotel Bilal Attendance'}
             </h1>
@@ -110,8 +117,22 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         </div>
 
         {/* Quick Top Right Actions */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-muted/60 text-foreground border border-border/80">
+        <div className="flex items-center gap-1.5 shrink-0">
+          {currentUserProfile && (
+            <span
+              className={cn(
+                'px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider hidden xs:inline-flex items-center gap-0.5',
+                isAdmin
+                  ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800'
+                  : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+              )}
+            >
+              {isAdmin ? <ShieldCheck className="w-2.5 h-2.5" /> : <UserCheck className="w-2.5 h-2.5" />}
+              <span>{currentUserProfile.role}</span>
+            </span>
+          )}
+
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold bg-muted/60 text-foreground border border-border/80">
             <span
               className={cn(
                 'w-2 h-2 rounded-full ring-2',
@@ -139,9 +160,9 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
       {/* Navigation Drawer (Sheet) */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent side="left" className="w-[82vw] max-w-[320px] p-0 flex flex-col bg-card border-r border-border">
-          {/* Drawer Header with Brand Profile */}
-          <SheetHeader className="p-4 border-b border-border/80 text-left bg-muted/30">
+        <SheetContent side="left" className="w-[85vw] max-w-[320px] p-0 flex flex-col bg-card border-r border-border pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          {/* Drawer Header with Brand Profile, Date Range Picker & Top Actions */}
+          <SheetHeader className="p-3.5 border-b border-border/80 text-left bg-muted/30 space-y-2.5">
             <div className="flex items-center gap-3">
               {storeProfile.logo ? (
                 <img
@@ -166,16 +187,54 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 mt-2 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-xs font-medium border border-emerald-500/20">
-              <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span className="truncate">{periodLabel}</span>
+            {/* Interactive Period / Date Range Picker */}
+            <PeriodRangePicker
+              fromDate={fromDate}
+              toDate={toDate}
+              onSetPeriod={onSetPeriod}
+            />
+
+            {/* Top Action Buttons: Theme Toggle & Export CSV */}
+            <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onToggleTheme}
+                className="h-8 text-xs font-medium border-border/80 bg-background hover:bg-muted justify-center"
+                title="Toggle Day/Night Mode"
+              >
+                {theme === 'dark' ? (
+                  <>
+                    <Sun className="w-3.5 h-3.5 mr-1 text-amber-400" />
+                    <span>Day</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                    <span>Night</span>
+                  </>
+                )}
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={() => {
+                  setIsDrawerOpen(false)
+                  onExportCsv()
+                }}
+                className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs px-2"
+                title="Export CSV"
+              >
+                <Download className="w-3.5 h-3.5 mr-1 shrink-0" />
+                <span className="truncate">CSV Export</span>
+              </Button>
             </div>
           </SheetHeader>
 
           {/* Navigation Links */}
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
-            <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-              Navigation
+            <div className="px-3 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              Menu Navigation
             </div>
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon
@@ -201,75 +260,79 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             })}
           </div>
 
-          {/* Cloud Sync Status in Drawer */}
-          <div className="p-3 mx-3 mb-2 rounded-xl bg-muted/40 border border-border/80 space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+          {/* Drawer Footer with Current User Profile Pill */}
+          {currentUserProfile && (
+            <div className="p-3 border-t border-border/70 bg-muted/20 space-y-2">
+              <div className="p-2.5 rounded-xl bg-card border border-border/80 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className={cn(
+                      'w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0',
+                      isAdmin
+                        ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300'
+                        : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                    )}
+                  >
+                    {currentUserProfile.displayName
+                      ? currentUserProfile.displayName.charAt(0).toUpperCase()
+                      : 'U'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-foreground truncate leading-tight">
+                      {currentUserProfile.displayName}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate font-mono">
+                      @{currentUserProfile.username}
+                    </p>
+                  </div>
+                </div>
+
                 <span
                   className={cn(
-                    'w-2 h-2 rounded-full ring-2',
-                    isSupabaseConnected ? 'bg-emerald-500 ring-emerald-500/20' : 'bg-amber-500 ring-amber-500/20'
+                    'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shrink-0',
+                    isAdmin
+                      ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                   )}
-                />
-                <span className="font-bold text-foreground text-[11px]">
-                  {isSupabaseConnected ? 'Cloud Sync Live' : 'Offline Mode'}
+                >
+                  {currentUserProfile.role}
                 </span>
               </div>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onManualSync}
-                disabled={isSyncing}
-                className="h-6 w-6 p-0 text-muted-foreground"
-              >
-                <RefreshCw className={cn('w-3.5 h-3.5', isSyncing && 'animate-spin text-emerald-600')} />
-              </Button>
+              {/* User Account Controls */}
+              <div className="grid grid-cols-2 gap-1.5">
+                {onOpenChangePassword && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setIsDrawerOpen(false)
+                      onOpenChangePassword()
+                    }}
+                    className="h-8 text-xs font-medium border-border/80 bg-background"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                    <span>Password</span>
+                  </Button>
+                )}
+
+                {onLogout && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setIsDrawerOpen(false)
+                      onLogout()
+                    }}
+                    className="h-8 text-xs font-medium border-border/80 bg-background text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                  >
+                    <LogOut className="w-3.5 h-3.5 mr-1" />
+                    <span>Logout</span>
+                  </Button>
+                )}
+              </div>
             </div>
-
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>{isSupabaseConnected ? 'Keep-Alive Active' : 'Offline Mode'}</span>
-              {supabaseLatency !== null && (
-                <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400">
-                  {supabaseLatency}ms
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Drawer Footer Actions */}
-          <div className="p-3 border-t border-border/70 space-y-1.5 bg-muted/20">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onToggleTheme}
-              className="w-full h-8 text-xs font-medium border-border/80 bg-background justify-center"
-            >
-              {theme === 'dark' ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
-                  <span>Day Mode</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
-                  <span>Night Mode</span>
-                </>
-              )}
-            </Button>
-
-            <Button
-              size="sm"
-              onClick={() => {
-                setIsDrawerOpen(false)
-                onExportCsv()
-              }}
-              className="w-full h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs"
-            >
-              <Download className="w-3.5 h-3.5 mr-1.5" />
-              <span>Export Period CSV</span>
-            </Button>
-          </div>
+          )}
         </SheetContent>
       </Sheet>
     </>

@@ -15,7 +15,10 @@ import {
   Users,
   Edit2,
   Check,
-  X
+  X,
+  Database,
+  FileSpreadsheet,
+  Activity
 } from 'lucide-react'
 import {
   Card,
@@ -27,33 +30,93 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { StoreProfile, OutletLogo, Staff } from '@/types/attendance'
+import { UserManagementSection } from './UserManagementSection'
+import type { StoreProfile, OutletLogo, Staff, UserProfile } from '@/types/attendance'
 import type { SyncResult } from '@/lib/supabaseSync'
+import { exportPayrollCsv } from '@/lib/attendanceUtils'
+import { uploadImage } from '@/lib/storageUtils'
 import { cn } from '@/lib/utils'
+
+type SettingsCategory = 'general' | 'outlets' | 'users' | 'database'
 
 interface SettingsTabProps {
   storeProfile: StoreProfile
   staffList: Staff[]
+  currentUserProfile?: UserProfile | null
+  isAdmin?: boolean
   onSaveProfile: (profile: StoreProfile) => Promise<SyncResult | void> | void
   onRenameOutlet?: (oldName: string, newName: string) => void
   onManualSync?: () => void
   onPullFromSupabase?: () => void
+  fetchUsersList?: () => Promise<UserProfile[]>
+  onAdminCreateUser?: (
+    username: string,
+    password: string,
+    name: string,
+    outlet: string
+  ) => Promise<{ success: boolean; error?: string }>
+  onAdminChangePassword?: (
+    userId: string,
+    newPassword: string
+  ) => Promise<{ success: boolean; error?: string }>
+  onAdminDeleteUser?: (userId: string) => Promise<{ success: boolean; error?: string }>
+  onChangeMyPassword?: (newPassword: string) => Promise<{ success: boolean; error?: string }>
   isSyncing?: boolean
   isSupabaseConnected?: boolean
   supabaseLatency?: number | null
 }
 
+const CATEGORIES: {
+  id: SettingsCategory
+  label: string
+  description: string
+  icon: React.FC<{ className?: string }>
+}[] = [
+  {
+    id: 'general',
+    label: 'General & Branding',
+    description: 'Name, address, contact & main restaurant logo',
+    icon: Store
+  },
+  {
+    id: 'outlets',
+    label: 'Outlets & Branches',
+    description: 'Manage store locations and outlet-specific logos',
+    icon: Building2
+  },
+  {
+    id: 'users',
+    label: 'Staff Accounts & Security',
+    description: 'Manage staff credentials, reset passwords & access',
+    icon: Users
+  },
+  {
+    id: 'database',
+    label: 'Cloud Sync & Database',
+    description: 'Supabase real-time connection & backup status',
+    icon: Cloud
+  }
+]
+
 export const SettingsTab: React.FC<SettingsTabProps> = ({
   storeProfile,
   staffList,
+  currentUserProfile = null,
+  isAdmin = false,
   onSaveProfile,
   onRenameOutlet,
   onManualSync,
   onPullFromSupabase,
+  fetchUsersList,
+  onAdminCreateUser,
+  onAdminChangePassword,
+  onAdminDeleteUser,
+  onChangeMyPassword,
   isSyncing = false,
   isSupabaseConnected = false,
   supabaseLatency = null
 }) => {
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('general')
   const [name, setName] = useState<string>('')
   const [address, setAddress] = useState<string>('')
   const [phone, setPhone] = useState<string>('')
@@ -82,14 +145,21 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     setOutletLogos(Array.isArray(storeProfile.outletLogos) ? storeProfile.outletLogos : [])
   }, [storeProfile])
 
-  const handleMainLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      setLogo(reader.result as string)
+    setIsSaving(true)
+    try {
+      const res = await uploadImage(file, 'store_logo')
+      if (res.url) {
+        setLogo(res.url)
+        setSaveFeedback({ type: 'success', text: 'Store logo uploaded. Click "Save Settings" to apply.' })
+      } else if (res.error) {
+        setSaveFeedback({ type: 'error', text: res.error })
+      }
+    } finally {
+      setIsSaving(false)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleAddOutlet = () => {
@@ -147,26 +217,32 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     setOutletLogos((prev) => prev.filter((l) => l.name !== outletToRemove))
   }
 
-  const handleOutletLogoUpload = (
+  const handleOutletLogoUpload = async (
     outletName: string,
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
-      setOutletLogos((prev) => {
-        const existing = prev.find((l) => l.name === outletName)
-        if (existing) {
-          return prev.map((l) =>
-            l.name === outletName ? { ...l, logo: dataUrl } : l
-          )
-        }
-        return [...prev, { name: outletName, logo: dataUrl }]
-      })
+    setIsSaving(true)
+    try {
+      const res = await uploadImage(file, 'outlet_logos')
+      if (res.url) {
+        setOutletLogos((prev) => {
+          const existing = prev.find((l) => l.name === outletName)
+          if (existing) {
+            return prev.map((l) =>
+              l.name === outletName ? { ...l, logo: res.url } : l
+            )
+          }
+          return [...prev, { name: outletName, logo: res.url }]
+        })
+        setSaveFeedback({ type: 'success', text: `Logo uploaded for ${outletName}. Click "Save Settings" to apply.` })
+      } else if (res.error) {
+        setSaveFeedback({ type: 'error', text: res.error })
+      }
+    } finally {
+      setIsSaving(false)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleRemoveOutletLogo = (outletName: string) => {
@@ -216,19 +292,19 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
-      {/* Top Header Bar */}
+    <div className="space-y-6 max-w-6xl mx-auto pb-12">
+      {/* Top Header Bar with Save Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-card border border-border/80 rounded-2xl shadow-xs">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-            <Building2 className="w-5 h-5" />
+            <Store className="w-5 h-5" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-foreground">
-              Settings
+              Restaurant & App Settings
             </h1>
             <p className="text-xs text-muted-foreground">
-              Manage restaurant branding, branches, contact details, and outlet logos
+              Configure restaurant branding, branches, staff login accounts, and cloud backup
             </p>
           </div>
         </div>
@@ -252,232 +328,247 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             </div>
           )}
 
-          <Button
-            onClick={handleSaveAll}
-            disabled={isSaving}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm h-9 px-4"
-          >
-            {isSaving ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <span>Save Changes</span>
-            )}
-          </Button>
+          {(activeCategory === 'general' || activeCategory === 'outlets') && (
+            <Button
+              onClick={handleSaveAll}
+              disabled={isSaving}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm h-9 px-4"
+            >
+              {isSaving ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: General Store Details & Main Logo */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Main Logo Card */}
-          <Card className="border-border/80 shadow-xs">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-emerald-600" />
-                <span>Restaurant Main Logo</span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Appears on top banners, reports, and printed payslips
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-border bg-muted/20 text-center relative group">
-                {logo ? (
-                  <div className="space-y-3 flex flex-col items-center">
-                    <img
-                      src={logo}
-                      alt="Store Logo Preview"
-                      className="w-24 h-24 object-contain rounded-xl bg-background p-2 border border-border shadow-xs"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setLogo('')}
-                      className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                    >
-                      Remove Logo
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2 py-3 flex flex-col items-center">
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                      <Upload className="w-5 h-5" />
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      <label
-                        htmlFor="main-logo-input"
-                        className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-                      >
-                        Upload an image
-                      </label>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        PNG, JPG or SVG (Max 2MB)
-                      </p>
-                    </div>
-                  </div>
-                )}
-                <input
-                  id="main-logo-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleMainLogoUpload}
-                  className="hidden"
-                />
-              </div>
-
-              {!logo && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => document.getElementById('main-logo-input')?.click()}
-                  className="w-full h-8 text-xs"
-                >
-                  <Upload className="w-3.5 h-3.5 mr-1.5" />
-                  Select Logo File
-                </Button>
+      {/* Category Navigation Tabs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {CATEGORIES.map((cat) => {
+          const Icon = cat.icon
+          const isActive = activeCategory === cat.id
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setActiveCategory(cat.id)}
+              className={cn(
+                'p-3 rounded-2xl border text-left transition-all duration-150 flex flex-col gap-1.5 cursor-pointer',
+                isActive
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                  : 'bg-card hover:bg-muted/50 border-border/80 text-foreground'
               )}
-            </CardContent>
-          </Card>
-
-          {/* Cloud Sync Status Card */}
-          <Card className="border-border/80 shadow-xs">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Cloud className="w-4 h-4 text-teal-600" />
-                <span>Cloud Database Sync</span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Real-time backup and multi-device connection
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40 border border-border/80 text-xs">
-                <div className="flex items-center gap-2">
+            >
+              <div className="flex items-center justify-between">
+                <div
+                  className={cn(
+                    'w-8 h-8 rounded-lg flex items-center justify-center',
+                    isActive
+                      ? 'bg-white/20 text-white'
+                      : 'bg-muted text-muted-foreground'
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                </div>
+                {cat.id === 'outlets' && (
                   <span
                     className={cn(
-                      'w-2.5 h-2.5 rounded-full ring-2',
+                      'text-[10px] font-bold px-1.5 py-0.5 rounded',
+                      isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
+                    )}
+                  >
+                    {outlets.length}
+                  </span>
+                )}
+                {cat.id === 'database' && (
+                  <span
+                    className={cn(
+                      'w-2 h-2 rounded-full ring-2',
                       isSupabaseConnected
-                        ? 'bg-emerald-500 ring-emerald-500/30'
-                        : 'bg-amber-500 ring-amber-500/30'
+                        ? isActive
+                          ? 'bg-emerald-200 ring-white/40'
+                          : 'bg-emerald-500 ring-emerald-500/20'
+                        : isActive
+                        ? 'bg-amber-300 ring-white/40'
+                        : 'bg-amber-500 ring-amber-500/20'
                     )}
                   />
-                  <span className="font-bold text-foreground">
-                    {isSupabaseConnected ? 'Connected & Live' : 'Local Offline Mode'}
-                  </span>
-                </div>
-
-                {supabaseLatency !== null && (
-                  <span className="font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    {supabaseLatency}ms
-                  </span>
                 )}
               </div>
+              <div>
+                <p className="text-xs font-bold leading-tight">{cat.label}</p>
+                <p
+                  className={cn(
+                    'text-[10px] line-clamp-1 mt-0.5',
+                    isActive ? 'text-white/80' : 'text-muted-foreground'
+                  )}
+                >
+                  {cat.description}
+                </p>
+              </div>
+            </button>
+          )
+        })}
+      </div>
 
-              <div className="flex items-center gap-2">
-                {onManualSync && (
+      {/* CATEGORY 1: GENERAL & BRANDING */}
+      {activeCategory === 'general' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+          {/* Main Logo Card */}
+          <div className="lg:col-span-1 space-y-4">
+            <Card className="border-border/80 shadow-xs">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-emerald-600" />
+                  <span>Restaurant Main Logo</span>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Appears on top banners, reports, and printed payslips
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-border bg-muted/20 text-center relative group">
+                  {logo ? (
+                    <div className="space-y-3 flex flex-col items-center">
+                      <img
+                        src={logo}
+                        alt="Store Logo Preview"
+                        className="w-24 h-24 object-contain rounded-xl bg-background p-2 border border-border shadow-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLogo('')}
+                        className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                      >
+                        Remove Logo
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 py-3 flex flex-col items-center">
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <label
+                          htmlFor="main-logo-input"
+                          className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                        >
+                          Upload an image
+                        </label>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          PNG, JPG or SVG (Max 2MB)
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    id="main-logo-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleMainLogoUpload}
+                    className="hidden"
+                  />
+                </div>
+
+                {!logo && (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={onManualSync}
-                    disabled={isSyncing}
-                    className="flex-1 h-8 text-xs font-medium"
-                    title="Push local data to Supabase"
+                    onClick={() => document.getElementById('main-logo-input')?.click()}
+                    className="w-full h-8 text-xs font-medium"
                   >
-                    <RefreshCw
-                      className={cn(
-                        'w-3.5 h-3.5 mr-1.5',
-                        isSyncing && 'animate-spin text-emerald-600'
-                      )}
+                    <Upload className="w-3.5 h-3.5 mr-1.5" />
+                    Select Logo File
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Restaurant Details Card */}
+          <div className="lg:col-span-2 space-y-4">
+            <Card className="border-border/80 shadow-xs">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <Store className="w-4 h-4 text-emerald-600" />
+                  <span>Company & Business Information</span>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Basic business details printed on payslips and monthly summaries
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="store-name" className="text-xs font-semibold">
+                    Restaurant / Business Name
+                  </Label>
+                  <Input
+                    id="store-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Hotel Bilal & Restaurant"
+                    className="h-9 bg-background text-sm font-medium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="store-phone" className="text-xs font-semibold flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span>Contact Phone Number</span>
+                    </Label>
+                    <Input
+                      id="store-phone"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+91 98765 43210"
+                      className="h-9 bg-background text-sm"
                     />
-                    <span>Push Cloud</span>
-                  </Button>
-                )}
+                  </div>
 
-                {onPullFromSupabase && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="store-address" className="text-xs font-semibold flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span>Business Address / Location</span>
+                    </Label>
+                    <Input
+                      id="store-address"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="e.g. Main Road, Triplicane, Chennai"
+                      className="h-9 bg-background text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-border/70 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Changes will be applied to generated payslips and headers.</span>
                   <Button
-                    type="button"
-                    variant="outline"
+                    onClick={handleSaveAll}
+                    disabled={isSaving}
                     size="sm"
-                    onClick={onPullFromSupabase}
-                    disabled={isSyncing}
-                    className="flex-1 h-8 text-xs font-medium"
-                    title="Pull remote records from Supabase"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8"
                   >
-                    <Cloud className="w-3.5 h-3.5 mr-1.5 text-teal-600" />
-                    <span>Pull Cloud</span>
+                    Save Changes
                   </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
+      )}
 
-        {/* Right Column: Restaurant Profile & Outlets Management */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* General Information Card */}
-          <Card className="border-border/80 shadow-xs">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Store className="w-4 h-4 text-emerald-600" />
-                <span>Company & Restaurant Information</span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Basic business details displayed on header and payslips
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="store-name" className="text-xs font-semibold">
-                  Restaurant / Business Name
-                </Label>
-                <Input
-                  id="store-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Hotel Bilal & Restaurant"
-                  className="h-9 bg-background text-sm"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="store-phone" className="text-xs font-semibold flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span>Contact Phone Number</span>
-                  </Label>
-                  <Input
-                    id="store-phone"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="h-9 bg-background text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="store-address" className="text-xs font-semibold flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span>Business Address</span>
-                  </Label>
-                  <Input
-                    id="store-address"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="e.g. Main Road, Triplicane, Chennai"
-                    className="h-9 bg-background text-sm"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Outlets & Branches Management */}
+      {/* CATEGORY 2: OUTLETS & BRANCHES */}
+      {activeCategory === 'outlets' && (
+        <div className="space-y-4 animate-fade-in">
           <Card className="border-border/80 shadow-xs">
             <CardHeader className="pb-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -487,11 +578,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     <span>Outlets & Branches Management</span>
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Add new outlets and upload custom outlet logos for payslips
+                    Add branches, rename outlets, and assign custom outlet logos for payslips
                   </CardDescription>
                 </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-muted text-muted-foreground w-fit">
-                  {outlets.length} {outlets.length === 1 ? 'Outlet' : 'Outlets'}
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-muted text-muted-foreground w-fit">
+                  {outlets.length} {outlets.length === 1 ? 'Outlet' : 'Outlets'} Active
                 </span>
               </div>
             </CardHeader>
@@ -507,7 +598,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                       handleAddOutlet()
                     }
                   }}
-                  placeholder="Enter new outlet name (e.g. Highway Branch, Express Outlet)"
+                  placeholder="Enter new outlet name (e.g. Highway Branch, Express Counter)"
                   className="h-9 bg-background text-sm flex-1"
                 />
                 <Button
@@ -530,9 +621,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 ) : (
                   outlets.map((outletName) => {
                     const assignedStaffCount = getOutletStaffCount(outletName)
-                    const outletLogoObj = outletLogos.find(
-                      (l) => l.name === outletName
-                    )
+                    const outletLogoObj = outletLogos.find((l) => l.name === outletName)
                     const inputId = `outlet-logo-${outletName.replace(/\s+/g, '-')}`
 
                     return (
@@ -672,7 +761,147 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             </CardContent>
           </Card>
         </div>
-      </div>
+      )}
+
+      {/* CATEGORY 3: USERS & ACCESS CONTROL */}
+      {activeCategory === 'users' && fetchUsersList && onAdminCreateUser && onAdminChangePassword && onAdminDeleteUser && onChangeMyPassword && (
+        <div className="animate-fade-in">
+          <UserManagementSection
+            currentUserProfile={currentUserProfile}
+            isAdmin={isAdmin}
+            outlets={outlets}
+            fetchUsersList={fetchUsersList}
+            onAdminCreateUser={onAdminCreateUser}
+            onAdminChangePassword={onAdminChangePassword}
+            onAdminDeleteUser={onAdminDeleteUser}
+            onChangeMyPassword={onChangeMyPassword}
+          />
+        </div>
+      )}
+
+      {/* CATEGORY 4: CLOUD DATABASE & BACKUP */}
+      {activeCategory === 'database' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
+          {/* Cloud Sync Status */}
+          <Card className="border-border/80 shadow-xs">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <Database className="w-4 h-4 text-emerald-600" />
+                <span>Supabase Real-Time Cloud Database</span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Live multi-device database connection and latency status
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/40 border border-border/80">
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className={cn(
+                      'w-3 h-3 rounded-full ring-4',
+                      isSupabaseConnected
+                        ? 'bg-emerald-500 ring-emerald-500/20'
+                        : 'bg-amber-500 ring-amber-500/20'
+                    )}
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-foreground">
+                      {isSupabaseConnected ? 'Connected & Live Sync Active' : 'Offline Mode (Local Storage)'}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {isSupabaseConnected
+                        ? 'Changes are automatically backed up to Supabase'
+                        : 'Running on local browser cache'}
+                    </p>
+                  </div>
+                </div>
+
+                {supabaseLatency !== null && (
+                  <span className="font-mono text-xs font-bold px-2 py-1 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                    {supabaseLatency}ms
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                {onManualSync && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onManualSync}
+                    disabled={isSyncing}
+                    className="flex-1 h-9 text-xs font-semibold"
+                  >
+                    <RefreshCw
+                      className={cn(
+                        'w-3.5 h-3.5 mr-1.5',
+                        isSyncing && 'animate-spin text-emerald-600'
+                      )}
+                    />
+                    <span>Force Push to Cloud</span>
+                  </Button>
+                )}
+
+                {onPullFromSupabase && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onPullFromSupabase}
+                    disabled={isSyncing}
+                    className="flex-1 h-9 text-xs font-semibold"
+                  >
+                    <Cloud className="w-3.5 h-3.5 mr-1.5 text-teal-600" />
+                    <span>Pull from Cloud</span>
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Backup & Keep-Alive Monitoring */}
+          <Card className="border-border/80 shadow-xs">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-600" />
+                <span>Keep-Alive Heartbeat & Data Export</span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Export period records or verify automatic keep-alive pings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2 p-3 rounded-xl bg-muted/20 border border-border/80 text-xs">
+                <div className="flex items-center justify-between font-medium">
+                  <span className="text-muted-foreground">Database Ping Frequency:</span>
+                  <span className="font-bold text-foreground">Every 4 minutes</span>
+                </div>
+                <div className="flex items-center justify-between font-medium">
+                  <span className="text-muted-foreground">Pause Inactivity Prevention:</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">Enabled</span>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const dates = [new Date().toISOString().split('T')[0]]
+                  exportPayrollCsv(staffList, dates)
+                }}
+                className="w-full h-9 text-xs font-semibold"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                <span>Export Master Payroll Backup (CSV)</span>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
+
+export default SettingsTab

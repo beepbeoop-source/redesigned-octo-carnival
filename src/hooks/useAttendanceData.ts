@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { Staff, StoreProfile, TabType, AttendanceMark } from '../types/attendance'
 import {
   localToday,
@@ -13,11 +13,16 @@ import {
   pushStaffToSupabase,
   fetchStoreProfileFromSupabase,
   pushStoreProfileToSupabase,
+  syncAttendanceRecord,
+  syncOvertimeRecord,
+  syncAdvanceRecord,
+  syncDailyWageRecord,
+  syncStaffProfile,
   deleteStaffFromSupabase
 } from '../lib/supabaseSync'
 
-const STORAGE_KEY = 'storeAttendance_real_v1'
-const PROFILE_KEY = 'storeProfile_real_v1'
+const STORAGE_KEY = 'storeAttendance_real_v2'
+const PROFILE_KEY = 'storeProfile_real_v2'
 const FROM_KEY = 'attendanceFrom'
 const TO_KEY = 'attendanceTo'
 const MONTH_KEY = 'attendancePayslipMonth'
@@ -69,7 +74,6 @@ export function useAttendanceData() {
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(false)
   const [supabaseLatency, setSupabaseLatency] = useState<number | null>(null)
   const [isSyncing, setIsSyncing] = useState<boolean>(false)
-  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Staff list state (pure real data)
   const [staffList, setStaffList] = useState<Staff[]>(() => {
@@ -147,19 +151,12 @@ export function useAttendanceData() {
     }
   }, [])
 
-  // Save staff list locally and queue cloud sync
+  // Save staff list locally
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(staffList))
     } catch (err) {
       console.error('Failed to persist staff list locally:', err)
-    }
-
-    if (isSupabaseConfigured() && staffList.length > 0) {
-      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current)
-      syncTimeoutRef.current = setTimeout(() => {
-        pushStaffToSupabase(staffList).catch(console.error)
-      }, 1500)
     }
   }, [staffList])
 
@@ -307,6 +304,7 @@ export function useAttendanceData() {
     localStorage.setItem(MONTH_KEY, month)
   }, [])
 
+  // Granular Real-Time Database Operations
   const updateAttendance = useCallback((id: string, date: string, mark: AttendanceMark) => {
     setStaffList((prev) =>
       prev.map((staff) => {
@@ -322,13 +320,16 @@ export function useAttendanceData() {
         return staff
       })
     )
+    syncAttendanceRecord(id, date, mark)
   }, [])
 
   const updateUsualWage = useCallback((id: string, wage: string | number) => {
     setStaffList((prev) =>
       prev.map((staff) => {
         if (staff.id === id) {
-          return { ...staff, wage }
+          const updated = { ...staff, wage }
+          syncStaffProfile(updated)
+          return updated
         }
         return staff
       })
@@ -350,6 +351,7 @@ export function useAttendanceData() {
         return staff
       })
     )
+    syncDailyWageRecord(id, date, wage)
   }, [])
 
   const updateOvertime = useCallback((id: string, date: string, amount: string | number) => {
@@ -363,6 +365,7 @@ export function useAttendanceData() {
         return staff
       })
     )
+    syncOvertimeRecord(id, date, amount)
   }, [])
 
   const updateAdvance = useCallback((id: string, date: string, amount: string | number) => {
@@ -376,6 +379,7 @@ export function useAttendanceData() {
         return staff
       })
     )
+    syncAdvanceRecord(id, date, amount)
   }, [])
 
   const addStaff = useCallback((newStaff: Omit<Staff, 'attendance' | 'overtime' | 'advances'>) => {
@@ -392,6 +396,7 @@ export function useAttendanceData() {
       }
       const updated = [...prev, item]
       updated.sort((a, b) => Number(a.id) - Number(b.id))
+      syncStaffProfile(item)
       return updated
     })
   }, [])
@@ -400,13 +405,12 @@ export function useAttendanceData() {
     setStaffList((prev) =>
       prev.map((item) => (item.id === updatedStaff.id ? updatedStaff : item))
     )
+    syncStaffProfile(updatedStaff)
   }, [])
 
   const deleteStaff = useCallback((id: string) => {
     setStaffList((prev) => prev.filter((item) => item.id !== id))
-    if (isSupabaseConfigured()) {
-      deleteStaffFromSupabase(id).catch(console.error)
-    }
+    deleteStaffFromSupabase(id)
   }, [])
 
   const resetFilters = useCallback(() => {
@@ -444,11 +448,14 @@ export function useAttendanceData() {
       if (!trimmedOld || !trimmedNew || trimmedOld === trimmedNew) return
 
       // 1. Update staff members assigned to this outlet
-      setStaffList((prev) =>
-        prev.map((s) =>
+      setStaffList((prev) => {
+        const updated = prev.map((s) =>
           s.outlet === trimmedOld ? { ...s, outlet: trimmedNew } : s
         )
-      )
+        // Sync modified staff profiles
+        updated.filter((s) => s.outlet === trimmedNew).forEach((s) => syncStaffProfile(s))
+        return updated
+      })
 
       // 2. Update storeProfile
       setStoreProfileState((prev) => {

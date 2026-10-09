@@ -12,12 +12,14 @@ import {
   Sun,
   Moon,
   Download,
-  RefreshCw,
-  Calendar
+  LogOut,
+  KeyRound,
+  ShieldCheck,
+  UserCheck
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { TabType, StoreProfile } from '@/types/attendance'
-import { formatDate } from '@/lib/attendanceUtils'
+import type { TabType, StoreProfile, UserProfile } from '@/types/attendance'
+import { PeriodRangePicker } from './PeriodRangePicker'
 import { cn } from '@/lib/utils'
 
 interface DesktopSidebarProps {
@@ -26,13 +28,13 @@ interface DesktopSidebarProps {
   storeProfile: StoreProfile
   fromDate: string
   toDate: string
+  onSetPeriod: (from: string, to: string) => void
   theme: 'light' | 'dark'
   onToggleTheme: () => void
   onExportCsv: () => void
-  onManualSync: () => void
-  isSyncing: boolean
-  isSupabaseConnected: boolean
-  supabaseLatency: number | null
+  currentUserProfile?: UserProfile | null
+  onOpenChangePassword?: () => void
+  onLogout?: () => void
 }
 
 const NAV_ITEMS: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -53,23 +55,20 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   storeProfile,
   fromDate,
   toDate,
+  onSetPeriod,
   theme,
   onToggleTheme,
   onExportCsv,
-  onManualSync,
-  isSyncing,
-  isSupabaseConnected,
-  supabaseLatency
+  currentUserProfile,
+  onOpenChangePassword,
+  onLogout
 }) => {
-  const periodLabel =
-    fromDate === toDate
-      ? formatDate(fromDate)
-      : `${formatDate(fromDate)} to ${formatDate(toDate)}`
+  const isAdmin = currentUserProfile?.role === 'admin'
 
   return (
     <aside className="hidden md:flex flex-col w-64 lg:w-72 fixed left-0 top-0 bottom-0 bg-card border-r border-border/80 z-30 shadow-sm select-none">
-      {/* Brand Header */}
-      <div className="p-5 border-b border-border/70 space-y-3 bg-muted/20">
+      {/* Brand Header & Top Actions */}
+      <div className="p-4 border-b border-border/70 space-y-2.5 bg-muted/20">
         <div className="flex items-center gap-3">
           {storeProfile.logo ? (
             <img
@@ -94,16 +93,50 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
           </div>
         </div>
 
-        {/* Period Badge */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-xs font-medium border border-emerald-500/20">
-          <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-          <span className="truncate">{periodLabel}</span>
+        {/* Interactive Period / Date Range Picker */}
+        <PeriodRangePicker
+          fromDate={fromDate}
+          toDate={toDate}
+          onSetPeriod={onSetPeriod}
+        />
+
+        {/* Top Action Buttons: Theme Toggle & Export CSV */}
+        <div className="grid grid-cols-2 gap-1.5 pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggleTheme}
+            className="h-8 text-xs font-medium border-border/80 bg-background hover:bg-muted justify-center"
+            title="Toggle Day/Night Mode"
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun className="w-3.5 h-3.5 mr-1 text-amber-400" />
+                <span>Day</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                <span>Night</span>
+              </>
+            )}
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={onExportCsv}
+            className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs px-2"
+            title="Export CSV"
+          >
+            <Download className="w-3.5 h-3.5 mr-1 shrink-0" />
+            <span className="truncate">CSV Export</span>
+          </Button>
         </div>
       </div>
 
       {/* Main Navigation Links */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-none">
-        <div className="px-3 pb-2 text-[10px] font-extrabold tracking-wider text-muted-foreground uppercase">
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1 scrollbar-none">
+        <div className="px-3 pb-1.5 text-[10px] font-extrabold tracking-wider text-muted-foreground uppercase">
           Menu Navigation
         </div>
         {NAV_ITEMS.map((item) => {
@@ -133,78 +166,79 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         })}
       </div>
 
-      {/* Supabase Connection & Live Status Box */}
-      <div className="p-3 mx-3 mb-2 rounded-xl bg-muted/40 border border-border/80 space-y-2 text-xs">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span
+      {/* Current Logged-in User Profile Pill (Bottom of sidebar) */}
+      {currentUserProfile && (
+        <div className="p-3 mx-3 mb-3 rounded-xl bg-muted/30 border border-border/80 shadow-2xs space-y-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
               className={cn(
-                'w-2 h-2 rounded-full ring-2',
-                isSupabaseConnected
-                  ? 'bg-emerald-500 ring-emerald-500/30'
-                  : 'bg-amber-500 ring-amber-500/30'
+                'w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0',
+                isAdmin
+                  ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30'
+                  : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
               )}
-            />
-            <span className="font-bold text-foreground text-[11px]">
-              {isSupabaseConnected ? 'Cloud Sync Live' : 'Local Offline Mode'}
-            </span>
+            >
+              {currentUserProfile.displayName
+                ? currentUserProfile.displayName.charAt(0).toUpperCase()
+                : 'U'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-foreground truncate leading-none">
+                {currentUserProfile.displayName}
+              </p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider',
+                    isAdmin
+                      ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                  )}
+                >
+                  {isAdmin ? (
+                    <ShieldCheck className="w-2.5 h-2.5" />
+                  ) : (
+                    <UserCheck className="w-2.5 h-2.5" />
+                  )}
+                  <span>{currentUserProfile.role}</span>
+                </span>
+                <span className="text-[10px] text-muted-foreground truncate">
+                  {currentUserProfile.outlet || 'Main Branch'}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onManualSync}
-            disabled={isSyncing}
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-            title="Force Sync"
-          >
-            <RefreshCw className={cn('w-3.5 h-3.5', isSyncing && 'animate-spin text-emerald-600')} />
-          </Button>
-        </div>
-
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>{isSupabaseConnected ? `Keep-Alive Active` : `Automatic Fallback`}</span>
-          {supabaseLatency !== null && (
-            <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-              {supabaseLatency}ms
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Bottom Footer Action Controls */}
-      <div className="p-3 border-t border-border/70 space-y-1.5 bg-muted/20">
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onToggleTheme}
-            className="flex-1 h-8 text-xs font-medium border-border/80 bg-background hover:bg-muted justify-center"
-            title="Toggle Day/Night Mode"
-          >
-            {theme === 'dark' ? (
-              <>
-                <Sun className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
-                <span>Day Mode</span>
-              </>
-            ) : (
-              <>
-                <Moon className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
-                <span>Night Mode</span>
-              </>
+          {/* Quick User Actions */}
+          <div className="flex items-center gap-1 pt-1 border-t border-border/50">
+            {onOpenChangePassword && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onOpenChangePassword}
+                className="flex-1 h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground justify-start"
+                title="Change Password"
+              >
+                <KeyRound className="w-3 h-3 mr-1 text-muted-foreground" />
+                <span className="truncate">Password</span>
+              </Button>
             )}
-          </Button>
-        </div>
 
-        <Button
-          size="sm"
-          onClick={onExportCsv}
-          className="w-full h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs"
-        >
-          <Download className="w-3.5 h-3.5 mr-1.5" />
-          <span>Export Period CSV</span>
-        </Button>
-      </div>
+            {onLogout && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLogout}
+                className="h-7 px-2 text-[11px] text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                title="Log Out"
+              >
+                <LogOut className="w-3 h-3 mr-1" />
+                <span>Logout</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </aside>
   )
 }
