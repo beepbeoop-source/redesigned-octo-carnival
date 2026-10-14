@@ -9,7 +9,9 @@ import {
   AlertCircle,
   CheckCircle2,
   Eye,
-  EyeOff
+  EyeOff,
+  Building2,
+  UserCheck
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -58,17 +60,19 @@ interface UserManagementSectionProps {
     newPassword: string
   ) => Promise<{ success: boolean; error?: string }>
   onAdminDeleteUser: (userId: string) => Promise<{ success: boolean; error?: string }>
+  onAdminUpdateUserRole?: (userId: string, newRole: UserRole) => Promise<{ success: boolean; error?: string }>
   onChangeMyPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>
 }
 
 export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
   currentUserProfile,
   isAdmin,
-  availableOutlets = ['Main Branch'],
+  availableOutlets = ['All Branches'],
   fetchUsersList,
   onAdminCreateUser,
   onAdminChangePassword,
   onAdminDeleteUser,
+  onAdminUpdateUserRole,
   onChangeMyPassword
 }) => {
   const [users, setUsers] = useState<UserProfile[]>([])
@@ -79,7 +83,7 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
   const [createUsername, setCreateUsername] = useState<string>('')
   const [createName, setCreateName] = useState<string>('')
   const [createRole, setCreateRole] = useState<UserRole>('staff')
-  const [createOutlet, setCreateOutlet] = useState<string>(availableOutlets[0] || 'Main Branch')
+  const [createOutlet, setCreateOutlet] = useState<string>('All Branches')
   const [createPassword, setCreatePassword] = useState<string>('')
   const [showCreatePassword, setShowCreatePassword] = useState<boolean>(false)
   const [createLoading, setCreateLoading] = useState<boolean>(false)
@@ -110,10 +114,37 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
     setCreateUsername('')
     setCreateName('')
     setCreateRole('staff')
-    setCreateOutlet(availableOutlets[0] || 'Main Branch')
+    setCreateOutlet('All Branches')
     setCreatePassword('')
     setCreateError('')
     setIsCreateOpen(true)
+  }
+
+  const handleToggleRole = async (user: UserProfile) => {
+    if (!onAdminUpdateUserRole) return
+    const newRole: UserRole = user.role === 'admin' ? 'staff' : 'admin'
+    const confirmMsg = user.role === 'admin'
+      ? `Change "${user.displayName}" (@${user.username}) to Staff User?\n\nStaff users cannot add more users, but can do everything else like an admin.`
+      : `Promote "${user.displayName}" (@${user.username}) to Administrator?\n\nThey will have full access including creating and managing other app users.`
+
+    if (!window.confirm(confirmMsg)) return
+
+    try {
+      const res = await onAdminUpdateUserRole(user.id, newRole)
+      if (!res.success) {
+        alert(res.error || 'Failed to update user role.')
+      } else {
+        setFeedback({
+          type: 'success',
+          text: `Updated role for "${user.displayName}" to ${newRole === 'admin' ? 'Administrator' : 'Staff User'}.`
+        })
+        setTimeout(() => setFeedback(null), 3500)
+        await loadUsers()
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update role'
+      alert(msg)
+    }
   }
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -270,6 +301,7 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead className="text-xs font-semibold">User Name</TableHead>
                   <TableHead className="text-xs font-semibold">Login Username / Email</TableHead>
+                  <TableHead className="text-xs font-semibold">Branch Access</TableHead>
                   <TableHead className="text-xs font-semibold">App Role</TableHead>
                   <TableHead className="text-xs font-semibold text-right">Actions</TableHead>
                 </TableRow>
@@ -277,14 +309,14 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-xs">
+                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground text-xs">
                       <RefreshCw className="w-4 h-4 animate-spin inline-block mr-2 text-emerald-600" />
                       Loading authorized users...
                     </TableCell>
                   </TableRow>
                 ) : users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-xs">
+                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground text-xs">
                       No user accounts found. Click "Create User" to add one.
                     </TableCell>
                   </TableRow>
@@ -307,6 +339,12 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                           @{u.username}
                         </TableCell>
                         <TableCell className="text-xs">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/60 text-foreground text-[11px] font-medium border border-border/60">
+                            <Building2 className="w-3 h-3 text-emerald-600" />
+                            <span>{u.outlet || 'All Branches'}</span>
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs">
                           <span
                             className={cn(
                               'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold',
@@ -321,7 +359,10 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                 <span>Administrator</span>
                               </>
                             ) : (
-                              <span>Staff User</span>
+                              <>
+                                <UserCheck className="w-3 h-3" />
+                                <span>Staff User</span>
+                              </>
                             )}
                           </span>
                         </TableCell>
@@ -329,6 +370,19 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                           <div className="flex items-center justify-end gap-1">
                             {isAdmin && (
                               <>
+                                {!isSelf && onAdminUpdateUserRole && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleToggleRole(u)}
+                                    className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                                    title={u.role === 'admin' ? 'Change to Staff User' : 'Promote to Admin'}
+                                  >
+                                    <span>{u.role === 'admin' ? 'To Staff' : 'To Admin'}</span>
+                                  </Button>
+                                )}
+
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -411,8 +465,25 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                       </span>
                     </div>
 
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Building2 className="w-3 h-3 text-emerald-600" />
+                      <span>{u.outlet || 'All Branches'}</span>
+                    </div>
+
                     {isAdmin && (
                       <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
+                        {!isSelf && onAdminUpdateUserRole && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleRole(u)}
+                            className="h-7 text-xs px-2"
+                          >
+                            <span>{u.role === 'admin' ? 'Change to Staff' : 'Promote to Admin'}</span>
+                          </Button>
+                        )}
+
                         <Button
                           type="button"
                           variant="outline"
@@ -421,7 +492,7 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                           className="h-7 text-xs px-2"
                         >
                           <Key className="w-3 h-3 mr-1 text-emerald-600" />
-                          <span>Change Password</span>
+                          <span>Password</span>
                         </Button>
 
                         {!isSelf && (
@@ -478,45 +549,69 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="new-user-role" className="text-xs font-semibold">
-                  App Access Role <span className="text-rose-500">*</span>
-                </Label>
-                <Select
-                  value={createRole}
-                  onValueChange={(val) => setCreateRole(val as UserRole)}
-                >
-                  <SelectTrigger className="w-full h-9 bg-background border-border/80 text-xs">
-                    <SelectValue placeholder="Select Role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="staff">Staff User (Standard)</SelectItem>
-                    <SelectItem value="admin">Administrator (Full)</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-user-role" className="text-xs font-semibold">
+                App Access Role <span className="text-rose-500">*</span>
+              </Label>
+              <Select
+                value={createRole}
+                onValueChange={(val) => setCreateRole(val as UserRole)}
+              >
+                <SelectTrigger className="w-full h-9 bg-background border-border/80 text-xs">
+                  <SelectValue placeholder="Select Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="staff">Staff User (Standard Operational)</SelectItem>
+                  <SelectItem value="admin">Administrator (Full Access)</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="p-2.5 rounded-lg border text-[11px] space-y-1 bg-muted/40 border-border/70">
+                {createRole === 'staff' ? (
+                  <>
+                    <p className="font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>Staff Role User</span>
+                    </p>
+                    <p className="text-muted-foreground text-[10px] leading-relaxed">
+                      Staff role users are app users who <strong>cannot add more users</strong>, but can do everything else just like admin (Attendance, Over Duty, Daily Wage, Cash Advance, Staff Roster, and Payslip Generator).
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Administrator Role</span>
+                    </p>
+                    <p className="text-muted-foreground text-[10px] leading-relaxed">
+                      Admin role users have full system access including creating and managing other app users.
+                    </p>
+                  </>
+                )}
               </div>
+            </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="new-user-outlet" className="text-xs font-semibold">
-                  Branch / Outlet
-                </Label>
-                <Select
-                  value={createOutlet}
-                  onValueChange={(val) => setCreateOutlet(val || 'Main Branch')}
-                >
-                  <SelectTrigger className="w-full h-9 bg-background border-border/80 text-xs">
-                    <SelectValue placeholder="Select Branch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableOutlets.map((o) => (
-                      <SelectItem key={o} value={o}>
-                        {o}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-user-outlet" className="text-xs font-semibold">
+                Branch / Outlet Access <span className="text-rose-500">*</span>
+              </Label>
+              <Select
+                value={createOutlet}
+                onValueChange={(val) => setCreateOutlet(val || 'All Branches')}
+              >
+                <SelectTrigger className="w-full h-9 bg-background border-border/80 text-xs">
+                  <SelectValue placeholder="All Branches" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableOutlets.map((outlet) => (
+                    <SelectItem key={outlet} value={outlet}>
+                      {outlet} {outlet === 'All Branches' ? '(Default & Full Access)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                All branches is the default and only option. User will have access across all branches.
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -580,7 +675,11 @@ export const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                 disabled={createLoading}
                 className="h-8.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold"
               >
-                {createLoading ? 'Creating Account...' : 'Create Staff Account'}
+                {createLoading
+                  ? 'Creating Account...'
+                  : createRole === 'staff'
+                  ? 'Create Staff User'
+                  : 'Create Admin User'}
               </Button>
             </DialogFooter>
           </form>

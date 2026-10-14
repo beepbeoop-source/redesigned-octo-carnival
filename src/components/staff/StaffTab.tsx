@@ -16,18 +16,22 @@ import { cn } from '@/lib/utils'
 
 interface StaffTabProps {
   staffList: Staff[]
+  isAdmin?: boolean
   onOpenAddStaff: () => void
   onOpenEditStaff: (staff: Staff) => void
   onDeleteStaff: (id: string) => void
   onOpenStaffActionSheet?: (staff: Staff) => void
+  onOpenUserManagement?: () => void
 }
 
 export const StaffTab: React.FC<StaffTabProps> = ({
   staffList,
+  isAdmin = false,
   onOpenAddStaff,
   onOpenEditStaff,
   onDeleteStaff,
-  onOpenStaffActionSheet
+  onOpenStaffActionSheet,
+  onOpenUserManagement
 }) => {
   return (
     <div className="space-y-4">
@@ -45,13 +49,28 @@ export const StaffTab: React.FC<StaffTabProps> = ({
           </div>
         </div>
 
-        <Button
-          onClick={onOpenAddStaff}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm h-9"
-        >
-          <UserPlus className="w-4 h-4 mr-1.5" />
-          <span>Add Staff Member</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && onOpenUserManagement && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenUserManagement}
+              className="h-9 text-xs sm:text-sm font-semibold border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+              title="Add App Login Users with Staff role"
+            >
+              <UserPlus className="w-4 h-4 mr-1.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Create App Login User</span>
+            </Button>
+          )}
+
+          <Button
+            onClick={onOpenAddStaff}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm h-9"
+          >
+            <UserPlus className="w-4 h-4 mr-1.5" />
+            <span>Add Staff Member</span>
+          </Button>
+        </div>
       </div>
 
       {/* 1. Mobile Cards View (Hidden on Desktop) */}

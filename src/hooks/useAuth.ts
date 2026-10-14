@@ -64,7 +64,7 @@ export function useAuth() {
           username: data.username,
           displayName: data.display_name || data.username,
           role: resolvedRole,
-          outlet: data.outlet || 'Main Branch',
+          outlet: data.outlet || 'All Branches',
           createdAt: data.created_at,
           updatedAt: data.updated_at
         }
@@ -79,7 +79,7 @@ export function useAuth() {
         username: username,
         displayName: meta.display_name || meta.name || (isUnameAdmin ? 'Administrator' : 'Staff User'),
         role: isUnameAdmin ? 'admin' : ((meta.role as UserRole) || 'staff'),
-        outlet: meta.outlet || 'Main Branch',
+        outlet: meta.outlet || 'All Branches',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
@@ -236,7 +236,7 @@ export function useAuth() {
     password: string,
     name: string,
     role: UserRole = 'staff',
-    outlet: string = 'Main Branch'
+    outlet: string = 'All Branches'
   ): Promise<{ success: boolean; error?: string }> => {
     const client = getSupabase()
     if (!client) return { success: false, error: 'Database is not configured' }
@@ -346,7 +346,7 @@ export function useAuth() {
           username: r.username,
           displayName: r.display_name || r.username,
           role: (r.username?.toLowerCase() === 'admin' ? 'admin' : (r.role as UserRole)) || 'staff',
-          outlet: r.outlet || 'Main Branch',
+          outlet: r.outlet || 'All Branches',
           createdAt: r.created_at,
           updatedAt: r.updated_at
         }))
@@ -365,7 +365,7 @@ export function useAuth() {
           username: r.username,
           displayName: r.display_name || r.username,
           role: (r.username?.toLowerCase() === 'admin' ? 'admin' : (r.role as UserRole)) || 'staff',
-          outlet: r.outlet || 'Main Branch',
+          outlet: r.outlet || 'All Branches',
           createdAt: r.created_at,
           updatedAt: r.updated_at
         }))

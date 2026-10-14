@@ -16,7 +16,8 @@ import {
   LogOut,
   KeyRound,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  UserPlus
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -38,6 +39,7 @@ interface MobileHeaderProps {
   isSupabaseConnected: boolean
   currentUserProfile?: UserProfile | null
   onOpenChangePassword?: () => void
+  onOpenUsersSettings?: () => void
   onLogout?: () => void
 }
 
@@ -63,6 +65,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   isSupabaseConnected,
   currentUserProfile,
   onOpenChangePassword,
+  onOpenUsersSettings,
   onLogout
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -72,7 +75,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     setIsDrawerOpen(false)
   }
 
-  const isAdmin = currentUserProfile?.role === 'admin'
+  const isAdmin = currentUserProfile?.role === 'admin' || currentUserProfile?.username?.toLowerCase() === 'admin'
 
   return (
     <>
@@ -284,36 +287,53 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               </div>
 
               {/* User Account Controls */}
-              <div className="grid grid-cols-2 gap-1.5">
-                {onOpenChangePassword && (
+              <div className="space-y-1.5">
+                {isAdmin && onOpenUsersSettings && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
                       setIsDrawerOpen(false)
-                      onOpenChangePassword()
+                      onOpenUsersSettings()
                     }}
-                    className="h-8 text-xs font-medium border-border/80 bg-background"
+                    className="w-full h-8 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20"
                   >
-                    <KeyRound className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
-                    <span>Password</span>
+                    <UserPlus className="w-3.5 h-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
+                    <span>+ Add / Manage Users</span>
                   </Button>
                 )}
 
-                {onLogout && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setIsDrawerOpen(false)
-                      onLogout()
-                    }}
-                    className="h-8 text-xs font-medium border-border/80 bg-background text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                  >
-                    <LogOut className="w-3.5 h-3.5 mr-1" />
-                    <span>Logout</span>
-                  </Button>
-                )}
+                <div className="grid grid-cols-2 gap-1.5">
+                  {onOpenChangePassword && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsDrawerOpen(false)
+                        onOpenChangePassword()
+                      }}
+                      className="h-8 text-xs font-medium border-border/80 bg-background"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                      <span>Password</span>
+                    </Button>
+                  )}
+
+                  {onLogout && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsDrawerOpen(false)
+                        onLogout()
+                      }}
+                      className="h-8 text-xs font-medium border-border/80 bg-background text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                    >
+                      <LogOut className="w-3.5 h-3.5 mr-1" />
+                      <span>Logout</span>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           )}

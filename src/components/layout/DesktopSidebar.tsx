@@ -15,7 +15,8 @@ import {
   LogOut,
   KeyRound,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  UserPlus
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { TabType, StoreProfile, UserProfile } from '@/types/attendance'
@@ -30,6 +31,7 @@ interface DesktopSidebarProps {
   onExportCsv: () => void
   currentUserProfile?: UserProfile | null
   onOpenChangePassword?: () => void
+  onOpenUsersSettings?: () => void
   onLogout?: () => void
 }
 
@@ -54,9 +56,10 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   onExportCsv,
   currentUserProfile,
   onOpenChangePassword,
+  onOpenUsersSettings,
   onLogout
 }) => {
-  const isAdmin = currentUserProfile?.role === 'admin'
+  const isAdmin = currentUserProfile?.role === 'admin' || currentUserProfile?.username?.toLowerCase() === 'admin'
 
   return (
     <aside className="hidden md:flex flex-col w-64 lg:w-72 fixed left-0 top-0 bottom-0 bg-sidebar border-r border-sidebar-border z-30 shadow-sm select-none">
@@ -196,32 +199,47 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
           </div>
 
           {/* Quick User Actions */}
-          <div className="flex items-center gap-1 pt-1 border-t border-border/50">
-            {onOpenChangePassword && (
+          <div className="flex flex-col gap-1.5 pt-1.5 border-t border-border/50">
+            {isAdmin && onOpenUsersSettings && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                onClick={onOpenChangePassword}
-                className="flex-1 h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground justify-start"
-                title="Change Password"
+                onClick={onOpenUsersSettings}
+                className="w-full h-7.5 px-2 text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 font-semibold justify-center shadow-2xs"
+                title="Create Staff User Accounts & Manage Logins"
               >
-                <KeyRound className="w-3 h-3 mr-1 text-muted-foreground" />
-                <span className="truncate">Password</span>
+                <UserPlus className="w-3.5 h-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
+                <span>+ Add / Manage Users</span>
               </Button>
             )}
 
-            {onLogout && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onLogout}
-                className="h-7 px-2 text-[11px] text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                title="Log Out"
-              >
-                <LogOut className="w-3 h-3 mr-1" />
-                <span>Logout</span>
-              </Button>
-            )}
+            <div className="flex items-center gap-1">
+              {onOpenChangePassword && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onOpenChangePassword}
+                  className="flex-1 h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground justify-start"
+                  title="Change Password"
+                >
+                  <KeyRound className="w-3 h-3 mr-1 text-muted-foreground" />
+                  <span className="truncate">Password</span>
+                </Button>
+              )}
+
+              {onLogout && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onLogout}
+                  className="h-7 px-2 text-[11px] text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                  title="Log Out"
+                >
+                  <LogOut className="w-3 h-3 mr-1" />
+                  <span>Logout</span>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}

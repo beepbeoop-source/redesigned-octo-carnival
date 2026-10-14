@@ -40,6 +40,7 @@ interface SettingsTabProps {
   staffList: Staff[]
   currentUserProfile?: UserProfile | null
   isAdmin?: boolean
+  initialCategory?: SettingsCategory
   onSaveProfile: (profile: StoreProfile) => Promise<SyncResult | void> | void
   onRenameOutlet?: (oldName: string, newName: string) => void
   onManualSync?: () => void
@@ -57,6 +58,7 @@ interface SettingsTabProps {
     newPassword: string
   ) => Promise<{ success: boolean; error?: string }>
   onAdminDeleteUser?: (userId: string) => Promise<{ success: boolean; error?: string }>
+  onAdminUpdateUserRole?: (userId: string, newRole: UserRole) => Promise<{ success: boolean; error?: string }>
   onChangeMyPassword?: (newPassword: string) => Promise<{ success: boolean; error?: string }>
   isSyncing?: boolean
   isSupabaseConnected?: boolean
@@ -95,6 +97,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   staffList,
   currentUserProfile = null,
   isAdmin = false,
+  initialCategory,
   onSaveProfile,
   onRenameOutlet,
   onManualSync,
@@ -103,16 +106,38 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   onAdminCreateUser,
   onAdminChangePassword,
   onAdminDeleteUser,
+  onAdminUpdateUserRole,
   onChangeMyPassword,
   isSyncing = false,
   isSupabaseConnected = false,
   supabaseLatency = null
 }) => {
+  // Only admins can see and access the users tab; staff users cannot add/manage users
+  const visibleCategories = CATEGORIES.filter((c) => c.id !== 'users' || isAdmin)
+
   // Desktop Active Category
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('branding')
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>(() => {
+    if (initialCategory && (initialCategory !== 'users' || isAdmin)) return initialCategory
+    return 'branding'
+  })
 
   // Mobile Active Subpage (null means showing Mobile Hub)
-  const [mobileSubpage, setMobileSubpage] = useState<SettingsCategory | null>(null)
+  const [mobileSubpage, setMobileSubpage] = useState<SettingsCategory | null>(() => {
+    if (initialCategory && (initialCategory !== 'users' || isAdmin)) return initialCategory
+    return null
+  })
+
+  useEffect(() => {
+    if (initialCategory) {
+      if (initialCategory === 'users' && !isAdmin) {
+        setActiveCategory('branding')
+        setMobileSubpage(null)
+      } else {
+        setActiveCategory(initialCategory)
+        setMobileSubpage(initialCategory)
+      }
+    }
+  }, [initialCategory, isAdmin])
 
   // Local Form States
   const [name, setName] = useState<string>(storeProfile.name || '')
@@ -736,11 +761,12 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               <UserManagementSection
                 currentUserProfile={currentUserProfile}
                 isAdmin={isAdmin}
-                availableOutlets={outlets}
+                availableOutlets={['All Branches']}
                 fetchUsersList={fetchUsersList}
                 onAdminCreateUser={onAdminCreateUser}
                 onAdminChangePassword={onAdminChangePassword}
                 onAdminDeleteUser={onAdminDeleteUser}
+                onAdminUpdateUserRole={onAdminUpdateUserRole}
                 onChangeMyPassword={onChangeMyPassword}
               />
             </div>
@@ -915,7 +941,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
             {/* Category Navigation Menu Items in Vercel List Group Style */}
             <div className="rounded-xl border border-border/80 bg-card overflow-hidden divide-y divide-border/60 shadow-2xs">
-              {CATEGORIES.map((cat) => {
+              {visibleCategories.map((cat) => {
                 return (
                   <button
                     key={cat.id}
@@ -966,7 +992,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
 
           <nav className="space-y-1">
-            {CATEGORIES.map((cat) => {
+            {visibleCategories.map((cat) => {
               const isActive = activeCategory === cat.id
               return (
                 <button

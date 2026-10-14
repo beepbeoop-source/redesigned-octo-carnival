@@ -219,12 +219,46 @@ ALTER TABLE store_profile ENABLE ROW LEVEL SECURITY;
 ALTER TABLE keep_alive_pings ENABLE ROW LEVEL SECURITY;
 
 -- ------------------------------------------------------------------------------
--- A. User Profiles Policies
+-- A. User Profiles & App Users Policies
 -- ------------------------------------------------------------------------------
+ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
+
 DROP POLICY IF EXISTS "Public app_users select safe" ON public.app_users;
 DROP POLICY IF EXISTS "Public app_users insert" ON public.app_users;
 DROP POLICY IF EXISTS "Public app_users update" ON public.app_users;
 DROP POLICY IF EXISTS "Public app_users delete" ON public.app_users;
+DROP POLICY IF EXISTS "Admins can view app_users" ON public.app_users;
+DROP POLICY IF EXISTS "Admins can modify app_users" ON public.app_users;
+
+-- app_users contains legacy password hashes: strictly restrict to authenticated administrators
+CREATE POLICY "Admins can view app_users"
+  ON public.app_users FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.user_profiles
+      WHERE user_profiles.id = auth.uid()
+        AND (user_profiles.role = 'admin' OR LOWER(user_profiles.username) = 'admin')
+    )
+  );
+
+CREATE POLICY "Admins can modify app_users"
+  ON public.app_users FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.user_profiles
+      WHERE user_profiles.id = auth.uid()
+        AND (user_profiles.role = 'admin' OR LOWER(user_profiles.username) = 'admin')
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.user_profiles
+      WHERE user_profiles.id = auth.uid()
+        AND (user_profiles.role = 'admin' OR LOWER(user_profiles.username) = 'admin')
+    )
+  );
 
 DROP POLICY IF EXISTS "Authenticated users view profiles" ON public.user_profiles;
 CREATE POLICY "Authenticated users view profiles"

@@ -12,7 +12,7 @@ import { AdvanceTab } from './components/advance/AdvanceTab'
 import { StaffTab } from './components/staff/StaffTab'
 import { ReportTab } from './components/report/ReportTab'
 import { PayslipTab } from './components/payslip/PayslipTab'
-import { SettingsTab } from './components/settings/SettingsTab'
+import { SettingsTab, type SettingsCategory } from './components/settings/SettingsTab'
 import { LoginView } from './components/auth/LoginView'
 import { ChangePasswordModal } from './components/settings/ChangePasswordModal'
 import { StaffModal } from './components/modals/StaffModal'
@@ -34,6 +34,7 @@ export function App() {
     adminCreateUser,
     adminChangeUserPassword,
     adminDeleteUser,
+    adminUpdateUserRole,
     fetchUsersList
   } = useAuth()
 
@@ -111,7 +112,15 @@ export function App() {
   // Self Change Password Modal
   const [isSelfPasswordModalOpen, setIsSelfPasswordModalOpen] = useState<boolean>(false)
 
+  // Initial settings tab category when navigating from shortcuts
+  const [settingsInitialCategory, setSettingsInitialCategory] = useState<SettingsCategory>('branding')
+
   // Handlers
+  const handleOpenUsersSettings = () => {
+    setSettingsInitialCategory('users')
+    setActiveTab('settings')
+  }
+
   const handleOpenAddStaff = () => {
     setEditingStaff(null)
     setIsStaffModalOpen(true)
@@ -184,6 +193,7 @@ export function App() {
         onExportCsv={handleExportCsv}
         currentUserProfile={profile}
         onOpenChangePassword={() => setIsSelfPasswordModalOpen(true)}
+        onOpenUsersSettings={handleOpenUsersSettings}
         onLogout={logout}
       />
 
@@ -201,6 +211,7 @@ export function App() {
             isSupabaseConnected={isSupabaseConnected}
             currentUserProfile={profile}
             onOpenChangePassword={() => setIsSelfPasswordModalOpen(true)}
+            onOpenUsersSettings={handleOpenUsersSettings}
             onLogout={logout}
           />
         </div>
@@ -292,10 +303,12 @@ export function App() {
             {activeTab === 'staff' && (
               <StaffTab
                 staffList={filteredStaffList}
+                isAdmin={isAdmin}
                 onOpenAddStaff={handleOpenAddStaff}
                 onOpenEditStaff={handleOpenEditStaff}
                 onDeleteStaff={deleteStaff}
                 onOpenStaffActionSheet={handleOpenActionSheet}
+                onOpenUserManagement={handleOpenUsersSettings}
               />
             )}
 
@@ -323,6 +336,7 @@ export function App() {
                 staffList={staffList}
                 currentUserProfile={profile}
                 isAdmin={isAdmin}
+                initialCategory={settingsInitialCategory}
                 onSaveProfile={setStoreProfile}
                 onRenameOutlet={renameOutlet}
                 onManualSync={pushToSupabase}
@@ -331,6 +345,7 @@ export function App() {
                 onAdminCreateUser={adminCreateUser}
                 onAdminChangePassword={adminChangeUserPassword}
                 onAdminDeleteUser={adminDeleteUser}
+                onAdminUpdateUserRole={adminUpdateUserRole}
                 onChangeMyPassword={changeMyPassword}
                 isSyncing={isSyncing}
                 isSupabaseConnected={isSupabaseConnected}
