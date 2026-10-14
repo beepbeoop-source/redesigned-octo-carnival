@@ -79,9 +79,18 @@ export function App() {
     deleteStaff,
     resetFilters,
     pendingChangesCount,
+    pendingDailyWageCount,
+    pendingOvertimeCount,
+    pendingAdvanceCount,
     isSavingPending,
     savePendingTodayChanges,
     discardPendingTodayChanges,
+    savePendingDailyWageChanges,
+    discardPendingDailyWageChanges,
+    savePendingOvertimeChanges,
+    discardPendingOvertimeChanges,
+    savePendingAdvanceChanges,
+    discardPendingAdvanceChanges,
     pullFromSupabase,
     pushToSupabase
   } = useAttendanceData()
@@ -247,6 +256,10 @@ export function App() {
                 entryDate={entryDate}
                 onEntryDateChange={setEntryDate}
                 onUpdateOvertime={updateOvertime}
+                pendingChangesCount={pendingOvertimeCount}
+                isSavingPending={isSavingPending}
+                onSavePendingChanges={savePendingOvertimeChanges}
+                onDiscardPendingChanges={discardPendingOvertimeChanges}
               />
             )}
 
@@ -256,6 +269,10 @@ export function App() {
                 entryDate={entryDate}
                 onEntryDateChange={setEntryDate}
                 onUpdateDailyWage={updateDailyWage}
+                pendingChangesCount={pendingDailyWageCount}
+                isSavingPending={isSavingPending}
+                onSavePendingChanges={savePendingDailyWageChanges}
+                onDiscardPendingChanges={discardPendingDailyWageChanges}
               />
             )}
 
@@ -265,6 +282,10 @@ export function App() {
                 entryDate={entryDate}
                 onEntryDateChange={setEntryDate}
                 onUpdateAdvance={updateAdvance}
+                pendingChangesCount={pendingAdvanceCount}
+                isSavingPending={isSavingPending}
+                onSavePendingChanges={savePendingAdvanceChanges}
+                onDiscardPendingChanges={discardPendingAdvanceChanges}
               />
             )}
 

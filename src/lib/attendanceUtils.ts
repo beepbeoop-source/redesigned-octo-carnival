@@ -8,6 +8,21 @@ export function localToday(): string {
   return `${year}-${month}-${day}`
 }
 
+export function getNextDate(currentDate: string, maxDate: string = localToday()): string | null {
+  if (!currentDate) return null
+  const d = new Date(`${currentDate}T00:00:00`)
+  if (Number.isNaN(d.valueOf())) return null
+  d.setDate(d.getDate() + 1)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const next = `${y}-${m}-${day}`
+  if (maxDate && next > maxDate) {
+    return null
+  }
+  return next
+}
+
 export function formatDate(value?: string): string {
   if (!value) return ''
   const parts = String(value).split('-')

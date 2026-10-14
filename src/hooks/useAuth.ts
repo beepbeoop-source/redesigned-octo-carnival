@@ -51,11 +51,19 @@ export function useAuth() {
         .maybeSingle()
 
       if (!fetchErr && data) {
+        const isUnameAdmin = data.username?.toLowerCase() === 'admin'
+        const resolvedRole: UserRole = isUnameAdmin ? 'admin' : ((data.role as UserRole) || 'staff')
+
+        // If username is admin, automatically sync role to admin in database
+        if (isUnameAdmin && data.role !== 'admin') {
+          client.from('user_profiles').update({ role: 'admin' }).eq('id', data.id).then(() => {})
+        }
+
         return {
           id: data.id,
           username: data.username,
           displayName: data.display_name || data.username,
-          role: (data.role as UserRole) || 'staff',
+          role: resolvedRole,
           outlet: data.outlet || 'Main Branch',
           createdAt: data.created_at,
           updatedAt: data.updated_at
@@ -64,11 +72,13 @@ export function useAuth() {
 
       // Fallback to auth metadata if user_profiles table is still populating
       const meta = authUserMeta || {}
+      const username = meta.username || 'staff'
+      const isUnameAdmin = username.toLowerCase() === 'admin'
       return {
         id: userId,
-        username: meta.username || 'staff',
-        displayName: meta.display_name || meta.name || 'Staff User',
-        role: (meta.role as UserRole) || 'staff',
+        username: username,
+        displayName: meta.display_name || meta.name || (isUnameAdmin ? 'Administrator' : 'Staff User'),
+        role: isUnameAdmin ? 'admin' : ((meta.role as UserRole) || 'staff'),
         outlet: meta.outlet || 'Main Branch',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -232,6 +242,11 @@ export function useAuth() {
     if (!client) return { success: false, error: 'Database is not configured' }
 
     try {
+      // Ensure caller's profile row in database is marked as admin so security checks pass
+      if (profile?.id && (profile.username?.toLowerCase() === 'admin' || profile.role === 'admin')) {
+        await client.from('user_profiles').update({ role: 'admin' }).eq('id', profile.id)
+      }
+
       const { data, error: rpcErr } = await client.rpc('admin_create_app_user', {
         p_username: username.trim(),
         p_password: password,
@@ -296,7 +311,29 @@ export function useAuth() {
     }
   }
 
-  // 7. Fetch All Users List
+  // 7. Admin Update User Role (Promote to Admin or Demote to Staff)
+  const adminUpdateUserRole = async (
+    targetUserId: string,
+    newRole: UserRole
+  ): Promise<{ success: boolean; error?: string }> => {
+    const client = getSupabase()
+    if (!client) return { success: false, error: 'Database is not configured' }
+
+    try {
+      const { error: updateErr } = await client
+        .from('user_profiles')
+        .update({ role: newRole, updated_at: new Date().toISOString() })
+        .eq('id', targetUserId)
+
+      if (updateErr) return { success: false, error: updateErr.message }
+      return { success: true }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update user role'
+      return { success: false, error: msg }
+    }
+  }
+
+  // 8. Fetch All Users List
   const fetchUsersList = async (): Promise<UserProfile[]> => {
     const client = getSupabase()
     if (!client) return []
@@ -308,7 +345,7 @@ export function useAuth() {
           id: r.id,
           username: r.username,
           displayName: r.display_name || r.username,
-          role: (r.role as UserRole) || 'staff',
+          role: (r.username?.toLowerCase() === 'admin' ? 'admin' : (r.role as UserRole)) || 'staff',
           outlet: r.outlet || 'Main Branch',
           createdAt: r.created_at,
           updatedAt: r.updated_at
@@ -327,7 +364,7 @@ export function useAuth() {
           id: r.id,
           username: r.username,
           displayName: r.display_name || r.username,
-          role: (r.role as UserRole) || 'staff',
+          role: (r.username?.toLowerCase() === 'admin' ? 'admin' : (r.role as UserRole)) || 'staff',
           outlet: r.outlet || 'Main Branch',
           createdAt: r.created_at,
           updatedAt: r.updated_at
@@ -341,7 +378,7 @@ export function useAuth() {
     }
   }
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = profile?.role === 'admin' || profile?.username?.toLowerCase() === 'admin'
 
   return {
     user: profile,
@@ -355,6 +392,7 @@ export function useAuth() {
     adminCreateUser,
     adminChangeUserPassword,
     adminDeleteUser,
+    adminUpdateUserRole,
     fetchUsersList,
     refreshProfile
   }

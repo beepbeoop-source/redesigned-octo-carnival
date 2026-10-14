@@ -14,19 +14,28 @@ import {
 import type { Staff } from '@/types/attendance'
 import { formatDate, localToday } from '@/lib/attendanceUtils'
 import { DatePicker } from '@/components/ui/date-picker'
+import { UnsavedChangesBanner } from '@/components/layout/UnsavedChangesBanner'
 
 interface AdvanceTabProps {
   staffList: Staff[]
   entryDate: string
   onEntryDateChange: (date: string) => void
   onUpdateAdvance: (id: string, date: string, amount: string | number) => void
+  pendingChangesCount?: number
+  isSavingPending?: boolean
+  onSavePendingChanges?: () => Promise<void>
+  onDiscardPendingChanges?: () => void
 }
 
 export const AdvanceTab: React.FC<AdvanceTabProps> = ({
   staffList,
   entryDate,
   onEntryDateChange,
-  onUpdateAdvance
+  onUpdateAdvance,
+  pendingChangesCount = 0,
+  isSavingPending = false,
+  onSavePendingChanges,
+  onDiscardPendingChanges
 }) => {
   return (
     <div className="space-y-4">
@@ -127,7 +136,7 @@ export const AdvanceTab: React.FC<AdvanceTabProps> = ({
                 <TableHead className="font-semibold text-xs">Employee</TableHead>
                 <TableHead className="font-semibold text-xs">Outlet</TableHead>
                 <TableHead className="font-semibold text-xs">Department</TableHead>
-                <TableHead className="font-semibold text-xs text-right">
+                <TableHead className="font-semibold text-xs text-left">
                   Advance amount on {formatDate(entryDate)} (₹)
                 </TableHead>
               </TableRow>
@@ -156,7 +165,7 @@ export const AdvanceTab: React.FC<AdvanceTabProps> = ({
                           {staff.dept}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-left">
                         <Input
                           type="number"
                           min="0"
@@ -164,7 +173,7 @@ export const AdvanceTab: React.FC<AdvanceTabProps> = ({
                           value={advanceVal}
                           onChange={(e) => onUpdateAdvance(staff.id, entryDate, e.target.value)}
                           placeholder="Advance ₹"
-                          className="h-8 w-32 ml-auto text-right text-xs bg-background border-border/80 font-medium text-rose-600 dark:text-rose-400"
+                          className="h-8 w-32 text-left text-xs bg-background border-border/80 font-medium text-rose-600 dark:text-rose-400"
                         />
                       </TableCell>
                     </TableRow>
@@ -175,6 +184,14 @@ export const AdvanceTab: React.FC<AdvanceTabProps> = ({
           </Table>
         </CardContent>
       </Card>
+
+      {/* Floating Unsaved Changes Popup */}
+      <UnsavedChangesBanner
+        count={pendingChangesCount}
+        isSaving={isSavingPending}
+        onSave={onSavePendingChanges}
+        onDiscard={onDiscardPendingChanges}
+      />
     </div>
   )
 }

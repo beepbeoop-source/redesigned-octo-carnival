@@ -115,20 +115,20 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <form onSubmit={handleSubmit} className="space-y-3.5">
               <div className="space-y-1.5">
                 <Label htmlFor="auth-email" className="text-xs font-semibold">
-                  Email Address <span className="text-rose-500">*</span>
+                  Username or Email Address <span className="text-rose-500">*</span>
                 </Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="auth-email"
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
+                    placeholder="e.g. admin or staff1"
                     className="h-9.5 pl-9 bg-background text-sm"
                     autoCapitalize="none"
                     autoCorrect="off"
-                    autoComplete="email"
+                    autoComplete="username"
                     required
                   />
                 </div>

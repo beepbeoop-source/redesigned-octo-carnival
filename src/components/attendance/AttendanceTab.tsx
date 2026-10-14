@@ -25,6 +25,7 @@ import {
 import type { Staff, AttendanceMark } from '@/types/attendance'
 import { formatDate, formatCurrency, calculateStaffPayroll } from '@/lib/attendanceUtils'
 import { DatePicker } from '@/components/ui/date-picker'
+import { UnsavedChangesBanner } from '@/components/layout/UnsavedChangesBanner'
 import { cn } from '@/lib/utils'
 
 interface AttendanceTabProps {
@@ -410,7 +411,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                     </TableHead>
                     <TableHead className="font-semibold text-xs">Dept</TableHead>
                     <TableHead className="font-semibold text-xs">Status</TableHead>
-                    <TableHead className="min-w-[100px] font-semibold text-xs text-right">
+                    <TableHead className="min-w-[110px] font-semibold text-xs text-left">
                       Daily Wage (₹)
                     </TableHead>
                     {validDates.map((d) => (
@@ -468,7 +469,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                               {staff.status}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-left">
                             <Input
                               type="number"
                               min="0"
@@ -476,7 +477,7 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                               value={staff.wage || ''}
                               onChange={(e) => onUpdateWage(staff.id, e.target.value)}
                               placeholder="Wage"
-                              className="h-7.5 w-20 ml-auto text-right text-xs bg-background border-border/70 p-1"
+                              className="h-7.5 w-24 text-left text-xs bg-background border-border/70 px-2 font-medium"
                             />
                           </TableCell>
 
@@ -532,35 +533,13 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
         </Card>
       )}
 
-      {/* Floating Unsaved Changes Popup for Today's Edits */}
-      {Boolean(pendingChangesCount && pendingChangesCount > 0) && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-sm bg-card/95 backdrop-blur-md border border-border shadow-xl rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
-          <span className="text-xs font-semibold text-foreground truncate">
-            You have {pendingChangesCount} unsaved changes
-          </span>
-          <div className="flex items-center gap-2 shrink-0">
-            {onDiscardPendingChanges && (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={isSavingPending}
-                onClick={onDiscardPendingChanges}
-                className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-              >
-                Discard
-              </Button>
-            )}
-            <Button
-              size="sm"
-              disabled={isSavingPending}
-              onClick={onSavePendingChanges}
-              className="h-8 px-3.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-            >
-              {isSavingPending ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* Floating Unsaved Changes Popup */}
+      <UnsavedChangesBanner
+        count={pendingChangesCount}
+        isSaving={isSavingPending}
+        onSave={onSavePendingChanges}
+        onDiscard={onDiscardPendingChanges}
+      />
     </div>
   )
 }

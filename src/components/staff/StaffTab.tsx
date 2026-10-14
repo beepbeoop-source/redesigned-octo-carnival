@@ -144,7 +144,7 @@ export const StaffTab: React.FC<StaffTabProps> = ({
                   <TableHead className="font-semibold text-xs">Designation</TableHead>
                   <TableHead className="font-semibold text-xs">Status</TableHead>
                   <TableHead className="font-semibold text-xs">Salary Type</TableHead>
-                  <TableHead className="font-semibold text-xs text-right">Usual Daily Wage</TableHead>
+                  <TableHead className="font-semibold text-xs text-left">Usual Daily Wage</TableHead>
                   <TableHead className="font-semibold text-xs text-right w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -190,7 +190,7 @@ export const StaffTab: React.FC<StaffTabProps> = ({
                       <TableCell className="text-xs text-muted-foreground">
                         {staff.salaryChanges ? 'Changes by date' : 'Fixed daily'}
                       </TableCell>
-                      <TableCell className="text-right text-xs sm:text-sm font-semibold">
+                      <TableCell className="text-left text-xs sm:text-sm font-semibold">
                         {staff.wage && Number(staff.wage) > 0 ? formatCurrency(Number(staff.wage)) : '—'}
                       </TableCell>
                       <TableCell className="text-right">

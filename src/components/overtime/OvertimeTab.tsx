@@ -14,19 +14,28 @@ import {
 import type { Staff } from '@/types/attendance'
 import { formatDate, localToday } from '@/lib/attendanceUtils'
 import { DatePicker } from '@/components/ui/date-picker'
+import { UnsavedChangesBanner } from '@/components/layout/UnsavedChangesBanner'
 
 interface OvertimeTabProps {
   staffList: Staff[]
   entryDate: string
   onEntryDateChange: (date: string) => void
   onUpdateOvertime: (id: string, date: string, amount: string | number) => void
+  pendingChangesCount?: number
+  isSavingPending?: boolean
+  onSavePendingChanges?: () => Promise<void>
+  onDiscardPendingChanges?: () => void
 }
 
 export const OvertimeTab: React.FC<OvertimeTabProps> = ({
   staffList,
   entryDate,
   onEntryDateChange,
-  onUpdateOvertime
+  onUpdateOvertime,
+  pendingChangesCount = 0,
+  isSavingPending = false,
+  onSavePendingChanges,
+  onDiscardPendingChanges
 }) => {
   return (
     <div className="space-y-4">
@@ -130,7 +139,7 @@ export const OvertimeTab: React.FC<OvertimeTabProps> = ({
                 <TableHead className="font-semibold text-xs">Employee</TableHead>
                 <TableHead className="font-semibold text-xs">Outlet</TableHead>
                 <TableHead className="font-semibold text-xs">Department</TableHead>
-                <TableHead className="font-semibold text-xs text-right">
+                <TableHead className="font-semibold text-xs text-left">
                   Over-duty amount for {formatDate(entryDate)} (₹)
                 </TableHead>
               </TableRow>
@@ -166,7 +175,7 @@ export const OvertimeTab: React.FC<OvertimeTabProps> = ({
                           {staff.dept}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-left">
                         <Input
                           type="number"
                           min="0"
@@ -174,7 +183,7 @@ export const OvertimeTab: React.FC<OvertimeTabProps> = ({
                           value={amount}
                           onChange={(e) => onUpdateOvertime(staff.id, entryDate, e.target.value)}
                           placeholder="Amount ₹"
-                          className="h-8 w-32 ml-auto text-right text-xs bg-background border-border/80 font-medium"
+                          className="h-8 w-32 text-left text-xs bg-background border-border/80 font-medium"
                         />
                       </TableCell>
                     </TableRow>
@@ -185,6 +194,14 @@ export const OvertimeTab: React.FC<OvertimeTabProps> = ({
           </Table>
         </CardContent>
       </Card>
+
+      {/* Floating Unsaved Changes Popup */}
+      <UnsavedChangesBanner
+        count={pendingChangesCount}
+        isSaving={isSavingPending}
+        onSave={onSavePendingChanges}
+        onDiscard={onDiscardPendingChanges}
+      />
     </div>
   )
 }

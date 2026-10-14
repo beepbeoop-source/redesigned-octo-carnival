@@ -193,7 +193,7 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
               value={otInput}
               onChange={(e) => setOtInput(e.target.value)}
               placeholder="0"
-              className="h-8.5 text-xs bg-background"
+              className="h-8.5 text-left text-xs bg-background"
             />
             <Button
               size="sm"
@@ -237,7 +237,7 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
               value={advInput}
               onChange={(e) => setAdvInput(e.target.value)}
               placeholder="0"
-              className="h-8.5 text-xs bg-background text-rose-600 font-semibold"
+              className="h-8.5 text-left text-xs bg-background text-rose-600 font-semibold"
             />
             <Button
               size="sm"
@@ -277,7 +277,7 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
               min="0"
               value={wageInput}
               onChange={(e) => setWageInput(e.target.value)}
-              className="h-8 w-24 text-right text-xs bg-background font-medium"
+              className="h-8 w-24 text-left text-xs bg-background font-medium"
             />
             <Button
               size="sm"

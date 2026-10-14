@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { Staff, StoreProfile, TabType, AttendanceMark } from '../types/attendance'
 import {
   localToday,
+  getNextDate,
   makeDates,
   monthRange,
   calculateStaffPayroll
@@ -78,9 +79,12 @@ export function useAttendanceData() {
   const [supabaseLatency, setSupabaseLatency] = useState<number | null>(null)
   const [isSyncing, setIsSyncing] = useState<boolean>(false)
 
-  // Unsaved / Pending Changes Queue for Today's Attendance & Wages
+  // Unsaved / Pending Changes Queue
   const [pendingTodayAttendance, setPendingTodayAttendance] = useState<Record<string, AttendanceMark>>({})
   const [pendingWages, setPendingWages] = useState<Record<string, string | number>>({})
+  const [pendingDailyWages, setPendingDailyWages] = useState<Record<string, { id: string; date: string; wage: string | number }>>({})
+  const [pendingOvertime, setPendingOvertime] = useState<Record<string, { id: string; date: string; amount: string | number }>>({})
+  const [pendingAdvance, setPendingAdvance] = useState<Record<string, { id: string; date: string; amount: string | number }>>({})
   const [isSavingPending, setIsSavingPending] = useState<boolean>(false)
 
   // Staff list state (pure real data)
@@ -460,7 +464,58 @@ export function useAttendanceData() {
         return staff
       })
     )
-    syncDailyWageRecord(id, date, wage)
+    setPendingDailyWages((prev) => ({
+      ...prev,
+      [`${id}:${date}`]: { id, date, wage }
+    }))
+  }, [])
+
+  const savePendingDailyWageChanges = useCallback(async () => {
+    if (!isSupabaseConfigured()) {
+      setPendingDailyWages({})
+      const nextDate = getNextDate(entryDate, today)
+      if (nextDate) {
+        setEntryDate(nextDate)
+      }
+      return
+    }
+
+    setIsSavingPending(true)
+    try {
+      const entries = Object.values(pendingDailyWages)
+      for (const item of entries) {
+        await syncDailyWageRecord(item.id, item.date, item.wage)
+      }
+      setPendingDailyWages({})
+      const nextDate = getNextDate(entryDate, today)
+      if (nextDate) {
+        setEntryDate(nextDate)
+      }
+    } catch (err) {
+      console.error('Failed to save pending daily wages to DB:', err)
+    } finally {
+      setIsSavingPending(false)
+    }
+  }, [pendingDailyWages, entryDate, today])
+
+  const discardPendingDailyWageChanges = useCallback(async () => {
+    setPendingDailyWages({})
+    if (isSupabaseConfigured()) {
+      const { data: cloudStaff } = await fetchStaffFromSupabase()
+      if (cloudStaff && Array.isArray(cloudStaff)) {
+        setStaffList(cloudStaff)
+        return
+      }
+    }
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) setStaffList(parsed)
+      }
+    } catch {
+      // fallback
+    }
   }, [])
 
   const updateOvertime = useCallback((id: string, date: string, amount: string | number) => {
@@ -474,7 +529,58 @@ export function useAttendanceData() {
         return staff
       })
     )
-    syncOvertimeRecord(id, date, amount)
+    setPendingOvertime((prev) => ({
+      ...prev,
+      [`${id}:${date}`]: { id, date, amount }
+    }))
+  }, [])
+
+  const savePendingOvertimeChanges = useCallback(async () => {
+    if (!isSupabaseConfigured()) {
+      setPendingOvertime({})
+      const nextDate = getNextDate(entryDate, today)
+      if (nextDate) {
+        setEntryDate(nextDate)
+      }
+      return
+    }
+
+    setIsSavingPending(true)
+    try {
+      const entries = Object.values(pendingOvertime)
+      for (const item of entries) {
+        await syncOvertimeRecord(item.id, item.date, item.amount)
+      }
+      setPendingOvertime({})
+      const nextDate = getNextDate(entryDate, today)
+      if (nextDate) {
+        setEntryDate(nextDate)
+      }
+    } catch (err) {
+      console.error('Failed to save pending overtime to DB:', err)
+    } finally {
+      setIsSavingPending(false)
+    }
+  }, [pendingOvertime, entryDate, today])
+
+  const discardPendingOvertimeChanges = useCallback(async () => {
+    setPendingOvertime({})
+    if (isSupabaseConfigured()) {
+      const { data: cloudStaff } = await fetchStaffFromSupabase()
+      if (cloudStaff && Array.isArray(cloudStaff)) {
+        setStaffList(cloudStaff)
+        return
+      }
+    }
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) setStaffList(parsed)
+      }
+    } catch {
+      // fallback
+    }
   }, [])
 
   const updateAdvance = useCallback((id: string, date: string, amount: string | number) => {
@@ -488,7 +594,58 @@ export function useAttendanceData() {
         return staff
       })
     )
-    syncAdvanceRecord(id, date, amount)
+    setPendingAdvance((prev) => ({
+      ...prev,
+      [`${id}:${date}`]: { id, date, amount }
+    }))
+  }, [])
+
+  const savePendingAdvanceChanges = useCallback(async () => {
+    if (!isSupabaseConfigured()) {
+      setPendingAdvance({})
+      const nextDate = getNextDate(entryDate, today)
+      if (nextDate) {
+        setEntryDate(nextDate)
+      }
+      return
+    }
+
+    setIsSavingPending(true)
+    try {
+      const entries = Object.values(pendingAdvance)
+      for (const item of entries) {
+        await syncAdvanceRecord(item.id, item.date, item.amount)
+      }
+      setPendingAdvance({})
+      const nextDate = getNextDate(entryDate, today)
+      if (nextDate) {
+        setEntryDate(nextDate)
+      }
+    } catch (err) {
+      console.error('Failed to save pending advance to DB:', err)
+    } finally {
+      setIsSavingPending(false)
+    }
+  }, [pendingAdvance, entryDate, today])
+
+  const discardPendingAdvanceChanges = useCallback(async () => {
+    setPendingAdvance({})
+    if (isSupabaseConfigured()) {
+      const { data: cloudStaff } = await fetchStaffFromSupabase()
+      if (cloudStaff && Array.isArray(cloudStaff)) {
+        setStaffList(cloudStaff)
+        return
+      }
+    }
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) setStaffList(parsed)
+      }
+    } catch {
+      // fallback
+    }
   }, [])
 
   const addStaff = useCallback((newStaff: Omit<Staff, 'attendance' | 'overtime' | 'advances'>) => {
@@ -660,9 +817,21 @@ export function useAttendanceData() {
     pendingTodayAttendance,
     pendingWages,
     pendingChangesCount: Object.keys(pendingTodayAttendance).length + Object.keys(pendingWages).length,
+    pendingDailyWages,
+    pendingDailyWageCount: Object.keys(pendingDailyWages).length,
+    pendingOvertime,
+    pendingOvertimeCount: Object.keys(pendingOvertime).length,
+    pendingAdvance,
+    pendingAdvanceCount: Object.keys(pendingAdvance).length,
     isSavingPending,
     savePendingTodayChanges,
     discardPendingTodayChanges,
+    savePendingDailyWageChanges,
+    discardPendingDailyWageChanges,
+    savePendingOvertimeChanges,
+    discardPendingOvertimeChanges,
+    savePendingAdvanceChanges,
+    discardPendingAdvanceChanges,
     pullFromSupabase,
     pushToSupabase
   }

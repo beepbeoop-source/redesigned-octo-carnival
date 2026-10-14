@@ -13,6 +13,7 @@ import {
 import type { Staff } from '@/types/attendance'
 import { formatDate, formatCurrency, localToday } from '@/lib/attendanceUtils'
 import { DatePicker } from '@/components/ui/date-picker'
+import { UnsavedChangesBanner } from '@/components/layout/UnsavedChangesBanner'
 import { cn } from '@/lib/utils'
 
 interface DailyWageTabProps {
@@ -20,13 +21,21 @@ interface DailyWageTabProps {
   entryDate: string
   onEntryDateChange: (date: string) => void
   onUpdateDailyWage: (id: string, date: string, wage: string | number) => void
+  pendingChangesCount?: number
+  isSavingPending?: boolean
+  onSavePendingChanges?: () => Promise<void>
+  onDiscardPendingChanges?: () => void
 }
 
 export const DailyWageTab: React.FC<DailyWageTabProps> = ({
   staffList,
   entryDate,
   onEntryDateChange,
-  onUpdateDailyWage
+  onUpdateDailyWage,
+  pendingChangesCount = 0,
+  isSavingPending = false,
+  onSavePendingChanges,
+  onDiscardPendingChanges
 }) => {
   return (
     <div className="space-y-4">
@@ -113,7 +122,7 @@ export const DailyWageTab: React.FC<DailyWageTabProps> = ({
                         value={custom}
                         onChange={(e) => onUpdateDailyWage(staff.id, entryDate, e.target.value)}
                         placeholder="Override ₹"
-                        className="h-8 w-28 text-right text-xs bg-background"
+                        className="h-8 w-28 text-left text-xs bg-background"
                       />
                     ) : (
                       <span className="text-xs text-muted-foreground italic">Fixed Wage</span>
@@ -134,8 +143,8 @@ export const DailyWageTab: React.FC<DailyWageTabProps> = ({
               <TableRow className="bg-muted/40 hover:bg-muted/40">
                 <TableHead className="font-semibold text-xs">Employee</TableHead>
                 <TableHead className="font-semibold text-xs">Outlet</TableHead>
-                <TableHead className="font-semibold text-xs text-right">Usual Daily Wage</TableHead>
-                <TableHead className="font-semibold text-xs text-right min-w-[180px]">
+                <TableHead className="font-semibold text-xs text-left">Usual Daily Wage</TableHead>
+                <TableHead className="font-semibold text-xs text-left min-w-[180px]">
                   Wage for {formatDate(entryDate)} (₹)
                 </TableHead>
                 <TableHead className="font-semibold text-xs text-center">Attendance</TableHead>
@@ -165,10 +174,10 @@ export const DailyWageTab: React.FC<DailyWageTabProps> = ({
                       <TableCell className="text-xs text-muted-foreground">
                         {staff.outlet || '-'}
                       </TableCell>
-                      <TableCell className="text-right text-xs sm:text-sm font-medium">
+                      <TableCell className="text-left text-xs sm:text-sm font-medium">
                         {staff.wage && Number(staff.wage) > 0 ? formatCurrency(Number(staff.wage)) : '—'}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-left">
                         {staff.salaryChanges ? (
                           <Input
                             type="number"
@@ -177,7 +186,7 @@ export const DailyWageTab: React.FC<DailyWageTabProps> = ({
                             value={custom}
                             onChange={(e) => onUpdateDailyWage(staff.id, entryDate, e.target.value)}
                             placeholder="Same as usual"
-                            className="h-8 w-36 ml-auto text-right text-xs bg-background border-border/80"
+                            className="h-8 w-36 text-left text-xs bg-background border-border/80"
                           />
                         ) : (
                           <span className="text-xs text-muted-foreground italic">Fixed Salary</span>
@@ -204,6 +213,14 @@ export const DailyWageTab: React.FC<DailyWageTabProps> = ({
           </Table>
         </CardContent>
       </Card>
+
+      {/* Floating Unsaved Changes Popup */}
+      <UnsavedChangesBanner
+        count={pendingChangesCount}
+        isSaving={isSavingPending}
+        onSave={onSavePendingChanges}
+        onDiscard={onDiscardPendingChanges}
+      />
     </div>
   )
 }
