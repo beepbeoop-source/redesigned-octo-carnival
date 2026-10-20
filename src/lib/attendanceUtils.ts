@@ -96,6 +96,7 @@ export function calculateStaffPayroll(staff: Staff, dates: string[]): StaffCalcu
 
   let otPay = 0
   let advance = 0
+  let deduction = 0
 
   dates.forEach((d) => {
     const ot = staff.overtime[d] || {}
@@ -105,8 +106,11 @@ export function calculateStaffPayroll(staff: Staff, dates: string[]): StaffCalcu
         : Number(ot.hours || 0) * Number(ot.rate || 0)
 
     otPay += isNaN(otAmount) ? 0 : otAmount
-    const advVal = Number(staff.advances[d] || 0)
+    const advVal = Number(staff.advances?.[d] || 0)
     advance += isNaN(advVal) ? 0 : advVal
+
+    const dedVal = Number(staff.deductions?.[d] || 0)
+    deduction += isNaN(dedVal) ? 0 : dedVal
   })
 
   return {
@@ -116,7 +120,8 @@ export function calculateStaffPayroll(staff: Staff, dates: string[]): StaffCalcu
     base,
     otPay,
     advance,
-    net: base + otPay - advance
+    deduction,
+    net: base + otPay - advance - deduction
   }
 }
 
@@ -139,6 +144,7 @@ export function calculateGroupSummary(staffList: Staff[], dates: string[]): Grou
         base: 0,
         ot: 0,
         adv: 0,
+        ded: 0,
         net: 0
       }
     }
@@ -152,6 +158,7 @@ export function calculateGroupSummary(staffList: Staff[], dates: string[]): Grou
     g.base += calc.base
     g.ot += calc.otPay
     g.adv += calc.advance
+    g.ded += calc.deduction
     g.net += calc.net
   })
 
@@ -184,7 +191,11 @@ export function exportPayrollCsv(staffList: Staff[], dates: string[]): void {
     'Designation',
     'Status',
     'Daily wage ₹',
-    ...dates.flatMap((d) => [`Over-duty amount ${formatDate(d)}`, `Advance ${formatDate(d)}`]),
+    ...dates.flatMap((d) => [
+      `Over-duty amount ${formatDate(d)}`,
+      `Advance ${formatDate(d)}`,
+      `Deduction ${formatDate(d)}`
+    ]),
     ...dates.map((d) => formatDate(d)),
     'Full days',
     'Half days',
@@ -192,6 +203,7 @@ export function exportPayrollCsv(staffList: Staff[], dates: string[]): void {
     'Attendance pay ₹',
     'OT pay ₹',
     'Advance ₹',
+    'Deduction ₹',
     'Net salary ₹'
   ]
 
@@ -199,14 +211,15 @@ export function exportPayrollCsv(staffList: Staff[], dates: string[]): void {
 
   staffList.forEach((staff) => {
     const calc = calculateStaffPayroll(staff, dates)
-    const otAndAdv = dates.flatMap((d) => {
+    const dailyTx = dates.flatMap((d) => {
       const ot = staff.overtime[d] || {}
       const otAmt =
         ot.amount !== undefined && ot.amount !== ''
           ? Number(ot.amount)
           : Number(ot.hours || 0) * Number(ot.rate || 0)
-      const adv = staff.advances[d] || ''
-      return [otAmt || 0, adv || '']
+      const adv = staff.advances?.[d] || ''
+      const ded = staff.deductions?.[d] || ''
+      return [otAmt || 0, adv || '', ded || '']
     })
 
     const attMarks = dates.map((d) => staff.attendance[d] || '')
@@ -219,7 +232,7 @@ export function exportPayrollCsv(staffList: Staff[], dates: string[]): void {
       staff.designation || '-',
       staff.status,
       staff.wage || 0,
-      ...otAndAdv,
+      ...dailyTx,
       ...attMarks,
       calc.full,
       calc.half,
@@ -227,6 +240,7 @@ export function exportPayrollCsv(staffList: Staff[], dates: string[]): void {
       calc.base,
       calc.otPay,
       calc.advance,
+      calc.deduction,
       calc.net
     ])
   })
@@ -265,7 +279,7 @@ export function exportSinglePayslipCsv(
     ['DESIGNATION', staff.designation || '-'],
     ['PERIOD', periodLabel],
     [''],
-    ['Date', 'Attendance', 'Daily Wage ₹', 'Over-Duty ₹', 'Advance ₹', 'Day Net ₹']
+    ['Date', 'Attendance', 'Daily Wage ₹', 'Over-Duty ₹', 'Advance ₹', 'Deduction ₹', 'Day Net ₹']
   ]
 
   dates.forEach((d) => {
@@ -284,10 +298,11 @@ export function exportSinglePayslipCsv(
         ? ot.amount
         : Number(ot.hours || 0) * Number(ot.rate || 0)
     )
-    const adv = Number(staff.advances[d] || 0)
-    const dayNet = wage + otAmt - adv
+    const adv = Number(staff.advances?.[d] || 0)
+    const ded = Number(staff.deductions?.[d] || 0)
+    const dayNet = wage + otAmt - adv - ded
 
-    lines.push([formatDate(d), mark, wage, otAmt, adv, dayNet])
+    lines.push([formatDate(d), mark, wage, otAmt, adv, ded, dayNet])
   })
 
   lines.push([
@@ -296,6 +311,7 @@ export function exportSinglePayslipCsv(
     calc.base,
     calc.otPay,
     calc.advance,
+    calc.deduction,
     calc.net
   ])
 
@@ -334,6 +350,7 @@ export function exportMonthlyPayslipsSummaryCsv(
     'Base Wage ₹',
     'Overtime Pay ₹',
     'Advance Deducted ₹',
+    'Other Deductions ₹',
     'Net Payable Salary ₹'
   ]
 
@@ -358,6 +375,7 @@ export function exportMonthlyPayslipsSummaryCsv(
       calc.base,
       calc.otPay,
       calc.advance,
+      calc.deduction,
       calc.net
     ])
   })

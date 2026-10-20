@@ -104,7 +104,22 @@ CREATE TABLE IF NOT EXISTS advances (
 CREATE INDEX IF NOT EXISTS idx_advances_staff_date ON advances(staff_id, date);
 CREATE INDEX IF NOT EXISTS idx_advances_date ON advances(date);
 
--- 5. Daily Wages Table (Date-Specific Daily Wage Overrides)
+-- 5. Deductions Table (Deductions Allocated by Date)
+CREATE TABLE IF NOT EXISTS deductions (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  staff_id TEXT NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  amount NUMERIC NOT NULL DEFAULT 0,
+  reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT uq_deductions_staff_date UNIQUE (staff_id, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_deductions_staff_date ON deductions(staff_id, date);
+CREATE INDEX IF NOT EXISTS idx_deductions_date ON deductions(date);
+
+-- 6. Daily Wages Table (Date-Specific Daily Wage Overrides)
 CREATE TABLE IF NOT EXISTS daily_wages (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   staff_id TEXT NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
@@ -165,6 +180,9 @@ CREATE TRIGGER trg_overtime_updated_at BEFORE UPDATE ON overtime FOR EACH ROW EX
 DROP TRIGGER IF EXISTS trg_advances_updated_at ON advances;
 CREATE TRIGGER trg_advances_updated_at BEFORE UPDATE ON advances FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 
+DROP TRIGGER IF EXISTS trg_deductions_updated_at ON deductions;
+CREATE TRIGGER trg_deductions_updated_at BEFORE UPDATE ON deductions FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
+
 DROP TRIGGER IF EXISTS trg_daily_wages_updated_at ON daily_wages;
 CREATE TRIGGER trg_daily_wages_updated_at BEFORE UPDATE ON daily_wages FOR EACH ROW EXECUTE FUNCTION update_timestamp_column();
 
@@ -214,6 +232,7 @@ ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE overtime ENABLE ROW LEVEL SECURITY;
 ALTER TABLE advances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE deductions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_wages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE store_profile ENABLE ROW LEVEL SECURITY;
 ALTER TABLE keep_alive_pings ENABLE ROW LEVEL SECURITY;
@@ -312,6 +331,16 @@ DROP POLICY IF EXISTS "Authenticated advances all" ON advances;
 DROP POLICY IF EXISTS "Allow all advances access" ON advances;
 CREATE POLICY "Authenticated advances all"
   ON advances FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- Deductions
+DROP POLICY IF EXISTS "Public deductions all" ON deductions;
+DROP POLICY IF EXISTS "Authenticated deductions all" ON deductions;
+DROP POLICY IF EXISTS "Allow all deductions access" ON deductions;
+CREATE POLICY "Authenticated deductions all"
+  ON deductions FOR ALL
   TO authenticated
   USING (true)
   WITH CHECK (true);

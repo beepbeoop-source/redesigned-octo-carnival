@@ -35,10 +35,11 @@ export const ReportTab: React.FC<ReportTabProps> = ({
       acc.base += calc.base
       acc.ot += calc.otPay
       acc.adv += calc.advance
+      acc.ded += calc.deduction
       acc.net += calc.net
       return acc
     },
-    { full: 0, half: 0, abs: 0, base: 0, ot: 0, adv: 0, net: 0 }
+    { full: 0, half: 0, abs: 0, base: 0, ot: 0, adv: 0, ded: 0, net: 0 }
   )
 
   const periodLabel =
@@ -66,7 +67,7 @@ export const ReportTab: React.FC<ReportTabProps> = ({
       <div className="flex items-center gap-2.5 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-900 dark:text-emerald-200">
         <Info className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
         <span>
-          Each date cell shows: <strong>[Mark · Wage · OT · Advance · Day Net]</strong>. Scroll horizontally to inspect full timeline data.
+          Each date cell shows: <strong>[Mark · Wage · OT · Advance · Deduction · Day Net]</strong>. Scroll horizontally to inspect full timeline data.
         </span>
       </div>
 
@@ -88,10 +89,10 @@ export const ReportTab: React.FC<ReportTabProps> = ({
 
                   {/* Date Columns */}
                   {dates.map((d) => (
-                    <TableHead key={d} className="min-w-[130px] font-semibold text-[11px] text-center px-2">
+                    <TableHead key={d} className="min-w-[140px] font-semibold text-[11px] text-center px-2">
                       <div>{formatDate(d)}</div>
                       <div className="text-[9px] text-muted-foreground font-normal">
-                        Mark · Wage · OT · Adv · Net
+                        Mark · Wage · OT · Adv · Ded · Net
                       </div>
                     </TableHead>
                   ))}
@@ -105,6 +106,9 @@ export const ReportTab: React.FC<ReportTabProps> = ({
                   <TableHead className="font-semibold text-xs text-right min-w-[90px]">
                     Advance
                   </TableHead>
+                  <TableHead className="font-semibold text-xs text-right min-w-[90px]">
+                    Deduction
+                  </TableHead>
                   <TableHead className="font-semibold text-xs text-right min-w-[110px]">
                     Net Salary
                   </TableHead>
@@ -113,7 +117,7 @@ export const ReportTab: React.FC<ReportTabProps> = ({
               <TableBody>
                 {staffList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={dates.length + 10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={dates.length + 11} className="text-center py-8 text-muted-foreground">
                       No staff records found.
                     </TableCell>
                   </TableRow>
@@ -162,8 +166,9 @@ export const ReportTab: React.FC<ReportTabProps> = ({
                               ? ot.amount
                               : Number(ot.hours || 0) * Number(ot.rate || 0)
                           )
-                          const adv = Number(staff.advances[d] || 0)
-                          const dayNet = wage + otAmt - adv
+                          const adv = Number(staff.advances?.[d] || 0)
+                          const ded = Number(staff.deductions?.[d] || 0)
+                          const dayNet = wage + otAmt - adv - ded
 
                           return (
                             <TableCell key={d} className="p-1.5 text-center text-[10px] whitespace-nowrap">
@@ -171,6 +176,7 @@ export const ReportTab: React.FC<ReportTabProps> = ({
                               <span className="text-muted-foreground"> · ₹{wage}</span>
                               <span className="text-amber-600 dark:text-amber-400"> · ₹{otAmt}</span>
                               <span className="text-rose-600 dark:text-rose-400"> · ₹{adv}</span>
+                              <span className="text-red-600 dark:text-red-400"> · ₹{ded}</span>
                               <span className="font-semibold text-emerald-700 dark:text-emerald-300">
                                 {' '}
                                 = ₹{dayNet}
@@ -187,6 +193,9 @@ export const ReportTab: React.FC<ReportTabProps> = ({
                         </TableCell>
                         <TableCell className="text-right text-xs font-medium text-rose-600 dark:text-rose-400">
                           {formatCurrency(calc.advance)}
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-medium text-red-600 dark:text-red-400">
+                          {formatCurrency(calc.deduction)}
                         </TableCell>
                         <TableCell className="text-right text-xs font-bold text-emerald-700 dark:text-emerald-300">
                           {formatCurrency(calc.net)}
@@ -221,6 +230,9 @@ export const ReportTab: React.FC<ReportTabProps> = ({
                   </TableCell>
                   <TableCell className="text-right text-xs text-rose-600 dark:text-rose-400">
                     {formatCurrency(totals.adv)}
+                  </TableCell>
+                  <TableCell className="text-right text-xs text-red-600 dark:text-red-400">
+                    {formatCurrency(totals.ded)}
                   </TableCell>
                   <TableCell className="text-right text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
                     {formatCurrency(totals.net)}

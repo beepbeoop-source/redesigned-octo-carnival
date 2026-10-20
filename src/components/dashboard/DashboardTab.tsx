@@ -4,6 +4,7 @@ import {
   Banknote,
   ClockAlert,
   HandCoins,
+  Scissors,
   Wallet,
   Info,
   Building
@@ -55,13 +56,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList }) => {
           acc.base += calc.base
           acc.ot += calc.otPay
           acc.adv += calc.advance
+          acc.ded += calc.deduction
           acc.net += calc.net
           acc.full += calc.full
           acc.half += calc.half
           acc.abs += calc.abs
           return acc
         },
-        { base: 0, ot: 0, adv: 0, net: 0, full: 0, half: 0, abs: 0 }
+        { base: 0, ot: 0, adv: 0, ded: 0, net: 0, full: 0, half: 0, abs: 0 }
       ),
     [staffList, monthDates]
   )
@@ -84,21 +86,22 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList }) => {
           acc.base += calc.base
           acc.ot += calc.otPay
           acc.adv += calc.advance
+          acc.ded += calc.deduction
           acc.net += calc.net
           acc.full += calc.full
           acc.half += calc.half
           acc.abs += calc.abs
           return acc
         },
-        { base: 0, ot: 0, adv: 0, net: 0, full: 0, half: 0, abs: 0 }
+        { base: 0, ot: 0, adv: 0, ded: 0, net: 0, full: 0, half: 0, abs: 0 }
       ),
     [staffList, summaryDates]
   )
 
   return (
     <div className="space-y-6">
-      {/* 5 Key Metric Cards (2x2 on mobile, 5-col on desktop) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3.5">
+      {/* 6 Key Metric Cards (2x3 on mobile/tablet, 6-col on desktop) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3.5">
         {/* Staff Members */}
         <Card className="border-border/80 shadow-2xs bg-card hover:border-border transition-colors">
           <CardContent className="p-2.5 sm:p-3.5 flex items-center gap-2.5 sm:gap-3">
@@ -167,6 +170,23 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList }) => {
           </CardContent>
         </Card>
 
+        {/* Deductions */}
+        <Card className="border-border/80 shadow-2xs bg-card hover:border-border transition-colors">
+          <CardContent className="p-2.5 sm:p-3.5 flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-muted/60 dark:bg-muted/40 border border-border/50 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+              <Scissors className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground block truncate leading-tight">
+                Deductions
+              </span>
+              <div className="text-base sm:text-2xl font-bold tracking-tight text-red-600 dark:text-red-400 truncate mt-0.5">
+                {formatCurrency(totalStats.ded)}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Net Salary */}
         <Card className="col-span-2 sm:col-span-1 border-border/80 shadow-2xs bg-card hover:border-border transition-colors border-emerald-500/30">
           <CardContent className="p-2.5 sm:p-3.5 flex items-center gap-2.5 sm:gap-3">
@@ -230,13 +250,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList }) => {
                   <TableHead className="font-semibold text-xs text-right">Attendance Pay</TableHead>
                   <TableHead className="font-semibold text-xs text-right">Over-Duty</TableHead>
                   <TableHead className="font-semibold text-xs text-right">Advance</TableHead>
+                  <TableHead className="font-semibold text-xs text-right">Deduction</TableHead>
                   <TableHead className="font-semibold text-xs text-right">Net Salary</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {groupSummaries.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                       No staff records found.
                     </TableCell>
                   </TableRow>
@@ -270,6 +291,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList }) => {
                       <TableCell className="text-right font-medium text-xs sm:text-sm text-rose-600 dark:text-rose-400">
                         {formatCurrency(g.adv)}
                       </TableCell>
+                      <TableCell className="text-right font-medium text-xs sm:text-sm text-red-600 dark:text-red-400">
+                        {formatCurrency(g.ded)}
+                      </TableCell>
                       <TableCell className="text-right font-bold text-xs sm:text-sm text-emerald-700 dark:text-emerald-300">
                         {formatCurrency(g.net)}
                       </TableCell>
@@ -300,6 +324,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ staffList }) => {
                   </TableCell>
                   <TableCell className="text-right text-xs sm:text-sm">
                     {formatCurrency(summaryTotals.adv)}
+                  </TableCell>
+                  <TableCell className="text-right text-xs sm:text-sm text-red-700 dark:text-red-300">
+                    {formatCurrency(summaryTotals.ded)}
                   </TableCell>
                   <TableCell className="text-right text-xs sm:text-sm text-emerald-700 dark:text-emerald-300 font-extrabold">
                     {formatCurrency(summaryTotals.net)}

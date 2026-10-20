@@ -22,6 +22,7 @@ export interface Staff {
   attendance: Record<string, AttendanceMark>
   overtime: Record<string, OvertimeEntry>
   advances: Record<string, string | number>
+  deductions?: Record<string, string | number>
   wageByDate?: Record<string, string | number>
 }
 
@@ -45,6 +46,7 @@ export type TabType =
   | 'overtime'
   | 'dailywage'
   | 'advance'
+  | 'deduction'
   | 'staff'
   | 'report'
   | 'payslip'
@@ -57,6 +59,7 @@ export interface StaffCalculation {
   base: number
   otPay: number
   advance: number
+  deduction: number
   net: number
 }
 
@@ -70,6 +73,7 @@ export interface GroupSummary {
   base: number
   ot: number
   adv: number
+  ded: number
   net: number
 }
 

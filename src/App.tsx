@@ -9,6 +9,7 @@ import { AttendanceTab } from './components/attendance/AttendanceTab'
 import { OvertimeTab } from './components/overtime/OvertimeTab'
 import { DailyWageTab } from './components/dailywage/DailyWageTab'
 import { AdvanceTab } from './components/advance/AdvanceTab'
+import { DeductionTab } from './components/deduction/DeductionTab'
 import { StaffTab } from './components/staff/StaffTab'
 import { ReportTab } from './components/report/ReportTab'
 import { PayslipTab } from './components/payslip/PayslipTab'
@@ -75,6 +76,7 @@ export function App() {
     updateDailyWage,
     updateOvertime,
     updateAdvance,
+    updateDeduction,
     addStaff,
     updateStaff,
     deleteStaff,
@@ -83,6 +85,7 @@ export function App() {
     pendingDailyWageCount,
     pendingOvertimeCount,
     pendingAdvanceCount,
+    pendingDeductionCount,
     isSavingPending,
     savePendingTodayChanges,
     discardPendingTodayChanges,
@@ -92,6 +95,8 @@ export function App() {
     discardPendingOvertimeChanges,
     savePendingAdvanceChanges,
     discardPendingAdvanceChanges,
+    savePendingDeductionChanges,
+    discardPendingDeductionChanges,
     pullFromSupabase,
     pushToSupabase
   } = useAttendanceData()
@@ -300,6 +305,20 @@ export function App() {
               />
             )}
 
+            {activeTab === 'deduction' && (
+              <DeductionTab
+                staffList={filteredStaffList}
+                entryDate={entryDate}
+                isAdmin={isAdmin}
+                onEntryDateChange={setEntryDate}
+                onUpdateDeduction={updateDeduction}
+                pendingChangesCount={pendingDeductionCount}
+                isSavingPending={isSavingPending}
+                onSavePendingChanges={savePendingDeductionChanges}
+                onDiscardPendingChanges={discardPendingDeductionChanges}
+              />
+            )}
+
             {activeTab === 'staff' && (
               <StaffTab
                 staffList={filteredStaffList}
@@ -362,9 +381,11 @@ export function App() {
         onClose={() => setIsActionSheetOpen(false)}
         staff={actionSheetStaff}
         currentDate={actionSheetDate}
+        isAdmin={isAdmin}
         onUpdateAttendance={updateAttendance}
         onUpdateOvertime={updateOvertime}
         onUpdateAdvance={updateAdvance}
+        onUpdateDeduction={updateDeduction}
         onUpdateWage={updateUsualWage}
         onOpenEditStaff={handleOpenEditStaff}
         onDeleteStaff={deleteStaff}

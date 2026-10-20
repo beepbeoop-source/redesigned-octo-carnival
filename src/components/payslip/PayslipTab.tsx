@@ -133,7 +133,7 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
             {/* 1. Brand & Outlet Header */}
             <tr>
               <th
-                colSpan={6}
+                colSpan={7}
                 className="p-3.5 bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-300 dark:border-neutral-700 font-normal"
               >
                 <div className="flex items-center justify-between gap-4 text-left">
@@ -183,7 +183,7 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
             {/* 2. Subheader Banner */}
             <tr className="bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-300 dark:border-neutral-700">
               <th
-                colSpan={6}
+                colSpan={7}
                 className="px-3.5 py-2.5 text-xs font-bold text-black dark:text-white uppercase tracking-wider"
               >
                 PAY SLIP · {staff.name} (ID {staff.id}) · {staff.dept} · {periodLabel}
@@ -197,6 +197,7 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
               <th className="px-3 py-2 text-right">Daily wage ₹</th>
               <th className="px-3 py-2 text-right">Over-duty ₹</th>
               <th className="px-3 py-2 text-right">Advance ₹</th>
+              <th className="px-3 py-2 text-right">Deduction ₹</th>
               <th className="px-3 py-2 text-right">Day net ₹</th>
             </tr>
           </thead>
@@ -218,8 +219,9 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
                   ? o.amount
                   : Number(o.hours || 0) * Number(o.rate || 0)
               )
-              const adv = Number(staff.advances[d] || 0)
-              const net = wage + ot - adv
+              const adv = Number(staff.advances?.[d] || 0)
+              const ded = Number(staff.deductions?.[d] || 0)
+              const net = wage + ot - adv - ded
 
               return (
                 <tr
@@ -238,6 +240,9 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
                   </td>
                   <td className="px-3 py-1.5 text-right font-mono text-black dark:text-white">
                     ₹{adv.toLocaleString('en-IN')}
+                  </td>
+                  <td className="px-3 py-1.5 text-right font-mono text-black dark:text-white">
+                    ₹{ded.toLocaleString('en-IN')}
                   </td>
                   <td className="px-3 py-1.5 text-right font-mono font-bold text-black dark:text-white">
                     ₹{net.toLocaleString('en-IN')}
@@ -263,6 +268,9 @@ export const PayslipTab: React.FC<PayslipTabProps> = ({
               </th>
               <th className="px-3 py-2.5 text-right font-mono text-black dark:text-white font-bold">
                 ₹{calc.advance.toLocaleString('en-IN')}
+              </th>
+              <th className="px-3 py-2.5 text-right font-mono text-black dark:text-white font-bold">
+                ₹{calc.deduction.toLocaleString('en-IN')}
               </th>
               <th className="px-3 py-2.5 text-right font-mono text-xs font-bold text-black dark:text-white">
                 ₹{calc.net.toLocaleString('en-IN')}

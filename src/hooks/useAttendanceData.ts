@@ -18,6 +18,7 @@ import {
   syncAttendanceRecord,
   syncOvertimeRecord,
   syncAdvanceRecord,
+  syncDeductionRecord,
   syncDailyWageRecord,
   syncStaffProfile,
   deleteStaffFromSupabase
@@ -85,6 +86,7 @@ export function useAttendanceData() {
   const [pendingDailyWages, setPendingDailyWages] = useState<Record<string, { id: string; date: string; wage: string | number }>>({})
   const [pendingOvertime, setPendingOvertime] = useState<Record<string, { id: string; date: string; amount: string | number }>>({})
   const [pendingAdvance, setPendingAdvance] = useState<Record<string, { id: string; date: string; amount: string | number }>>({})
+  const [pendingDeduction, setPendingDeduction] = useState<Record<string, { id: string; date: string; amount: string | number }>>({})
   const [isSavingPending, setIsSavingPending] = useState<boolean>(false)
 
   // Staff list state (pure real data)
@@ -252,7 +254,7 @@ export function useAttendanceData() {
   // Make sure entryDate is valid
   useEffect(() => {
     if (
-      (activeTab === 'overtime' || activeTab === 'advance' || activeTab === 'dailywage') &&
+      (activeTab === 'overtime' || activeTab === 'advance' || activeTab === 'deduction' || activeTab === 'dailywage') &&
       !activeDates.includes(entryDate)
     ) {
       setEntryDate(activeDates.includes(today) ? today : activeDates[0] || today)
@@ -319,6 +321,7 @@ export function useAttendanceData() {
     let totalBase = 0
     let totalOt = 0
     let totalAdvance = 0
+    let totalDeduction = 0
     let totalNet = 0
 
     staffList.forEach((p) => {
@@ -326,6 +329,7 @@ export function useAttendanceData() {
       totalBase += calc.base
       totalOt += calc.otPay
       totalAdvance += calc.advance
+      totalDeduction += calc.deduction
       totalNet += calc.net
     })
 
@@ -334,6 +338,7 @@ export function useAttendanceData() {
       totalBase,
       totalOt,
       totalAdvance,
+      totalDeduction,
       totalNet
     }
   }, [staffList, activeDates])
@@ -648,7 +653,72 @@ export function useAttendanceData() {
     }
   }, [])
 
-  const addStaff = useCallback((newStaff: Omit<Staff, 'attendance' | 'overtime' | 'advances'>) => {
+  const updateDeduction = useCallback((id: string, date: string, amount: string | number) => {
+    setStaffList((prev) =>
+      prev.map((staff) => {
+        if (staff.id === id) {
+          const ded = { ...(staff.deductions || {}) }
+          ded[date] = amount
+          return { ...staff, deductions: ded }
+        }
+        return staff
+      })
+    )
+    setPendingDeduction((prev) => ({
+      ...prev,
+      [`${id}:${date}`]: { id, date, amount }
+    }))
+  }, [])
+
+  const savePendingDeductionChanges = useCallback(async () => {
+    if (!isSupabaseConfigured()) {
+      setPendingDeduction({})
+      const nextDate = getNextDate(entryDate, today)
+      if (nextDate) {
+        setEntryDate(nextDate)
+      }
+      return
+    }
+
+    setIsSavingPending(true)
+    try {
+      const entries = Object.values(pendingDeduction)
+      for (const item of entries) {
+        await syncDeductionRecord(item.id, item.date, item.amount)
+      }
+      setPendingDeduction({})
+      const nextDate = getNextDate(entryDate, today)
+      if (nextDate) {
+        setEntryDate(nextDate)
+      }
+    } catch (err) {
+      console.error('Failed to save pending deduction to DB:', err)
+    } finally {
+      setIsSavingPending(false)
+    }
+  }, [pendingDeduction, entryDate, today])
+
+  const discardPendingDeductionChanges = useCallback(async () => {
+    setPendingDeduction({})
+    if (isSupabaseConfigured()) {
+      const { data: cloudStaff } = await fetchStaffFromSupabase()
+      if (cloudStaff && Array.isArray(cloudStaff)) {
+        setStaffList(cloudStaff)
+        return
+      }
+    }
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) setStaffList(parsed)
+      }
+    } catch {
+      // fallback
+    }
+  }, [])
+
+  const addStaff = useCallback((newStaff: Omit<Staff, 'attendance' | 'overtime' | 'advances' | 'deductions'>) => {
     setStaffList((prev) => {
       if (prev.some((x) => x.id === newStaff.id)) {
         throw new Error('Employee ID already exists')
@@ -658,6 +728,7 @@ export function useAttendanceData() {
         attendance: {},
         overtime: {},
         advances: {},
+        deductions: {},
         wageByDate: {}
       }
       const updated = [...prev, item]
@@ -810,6 +881,7 @@ export function useAttendanceData() {
     updateDailyWage,
     updateOvertime,
     updateAdvance,
+    updateDeduction,
     addStaff,
     updateStaff,
     deleteStaff,
@@ -823,6 +895,8 @@ export function useAttendanceData() {
     pendingOvertimeCount: Object.keys(pendingOvertime).length,
     pendingAdvance,
     pendingAdvanceCount: Object.keys(pendingAdvance).length,
+    pendingDeduction,
+    pendingDeductionCount: Object.keys(pendingDeduction).length,
     isSavingPending,
     savePendingTodayChanges,
     discardPendingTodayChanges,
@@ -832,6 +906,8 @@ export function useAttendanceData() {
     discardPendingOvertimeChanges,
     savePendingAdvanceChanges,
     discardPendingAdvanceChanges,
+    savePendingDeductionChanges,
+    discardPendingDeductionChanges,
     pullFromSupabase,
     pushToSupabase
   }

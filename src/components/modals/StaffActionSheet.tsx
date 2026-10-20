@@ -17,7 +17,8 @@ import {
   Trash2,
   IndianRupee,
   ClockAlert,
-  HandCoins
+  HandCoins,
+  Scissors
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,9 +27,11 @@ interface StaffActionSheetProps {
   onClose: () => void
   staff: Staff | null
   currentDate: string
+  isAdmin?: boolean
   onUpdateAttendance: (id: string, date: string, mark: AttendanceMark) => void
   onUpdateOvertime: (id: string, date: string, amount: string | number) => void
   onUpdateAdvance: (id: string, date: string, amount: string | number) => void
+  onUpdateDeduction?: (id: string, date: string, amount: string | number) => void
   onUpdateWage: (id: string, wage: string | number) => void
   onOpenEditStaff: (staff: Staff) => void
   onDeleteStaff: (id: string) => void
@@ -39,15 +42,18 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
   onClose,
   staff,
   currentDate,
+  isAdmin = false,
   onUpdateAttendance,
   onUpdateOvertime,
   onUpdateAdvance,
+  onUpdateDeduction,
   onUpdateWage,
   onOpenEditStaff,
   onDeleteStaff
 }) => {
   const [otInput, setOtInput] = useState<string>('')
   const [advInput, setAdvInput] = useState<string>('')
+  const [dedInput, setDedInput] = useState<string>('')
   const [wageInput, setWageInput] = useState<string>('')
 
   useEffect(() => {
@@ -55,7 +61,8 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
       const ot = staff.overtime[currentDate] || {}
       const otAmt = ot.amount !== undefined ? ot.amount : ''
       setOtInput(String(otAmt || ''))
-      setAdvInput(String(staff.advances[currentDate] || ''))
+      setAdvInput(String(staff.advances?.[currentDate] || ''))
+      setDedInput(String(staff.deductions?.[currentDate] || ''))
       setWageInput(staff.wage && String(staff.wage) !== '0' ? String(staff.wage) : '')
     }
   }, [staff, currentDate, isOpen])
@@ -77,6 +84,12 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
 
   const handleSaveAdv = () => {
     onUpdateAdvance(staff.id, currentDate, advInput)
+  }
+
+  const handleSaveDed = () => {
+    if (onUpdateDeduction) {
+      onUpdateDeduction(staff.id, currentDate, dedInput)
+    }
   }
 
   const handleSaveWage = () => {
@@ -265,7 +278,59 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
           </div>
         </div>
 
-        {/* 4. Usual Daily Wage */}
+        {/* 4. Deduction Adjustment (Admin Allocated) */}
+        <div className="p-3 bg-muted/40 rounded-xl border border-border/70 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold flex items-center gap-1 text-foreground">
+              <Scissors className="w-3.5 h-3.5 text-red-600" /> Deduction Allocated (₹)
+            </span>
+            <span className="text-muted-foreground text-[11px]">{formatDate(currentDate)}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min="0"
+              disabled={!isAdmin}
+              value={dedInput}
+              onChange={(e) => setDedInput(e.target.value)}
+              placeholder="0"
+              className="h-8.5 text-left text-xs bg-background text-red-600 dark:text-red-400 font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+            />
+            {isAdmin && (
+              <Button
+                size="sm"
+                onClick={handleSaveDed}
+                className="h-8.5 px-3 bg-red-600 hover:bg-red-700 text-white text-xs"
+              >
+                Set Ded
+              </Button>
+            )}
+          </div>
+
+          {isAdmin && (
+            <div className="flex gap-1.5 overflow-x-auto pt-1">
+              {[100, 200, 500, 1000].map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => {
+                    const nextVal = (Number(dedInput) || 0) + val
+                    setDedInput(String(nextVal))
+                    if (onUpdateDeduction) {
+                      onUpdateDeduction(staff.id, currentDate, nextVal)
+                    }
+                  }}
+                  className="px-2 py-1 rounded-md bg-background border border-border text-[11px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                >
+                  +{val}₹
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 5. Usual Daily Wage */}
         <div className="flex items-center justify-between gap-2 p-2.5 bg-muted/30 rounded-xl text-xs">
           <div className="flex items-center gap-1 font-semibold text-foreground">
             <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />

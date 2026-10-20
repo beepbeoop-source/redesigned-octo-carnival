@@ -5,6 +5,7 @@ import {
   Clock,
   CircleDollarSign,
   HandCoins,
+  Scissors,
   Users,
   FileSpreadsheet,
   Receipt
@@ -23,6 +24,7 @@ const TABS: { id: TabType; label: string; icon: React.FC<{ className?: string }>
   { id: 'overtime', label: 'Over Duty', icon: Clock },
   { id: 'dailywage', label: 'Daily Wage', icon: CircleDollarSign },
   { id: 'advance', label: 'Advance', icon: HandCoins },
+  { id: 'deduction', label: 'Deductions', icon: Scissors },
   { id: 'staff', label: 'Staff', icon: Users },
   { id: 'report', label: 'Report', icon: FileSpreadsheet },
   { id: 'payslip', label: 'Payslip', icon: Receipt }

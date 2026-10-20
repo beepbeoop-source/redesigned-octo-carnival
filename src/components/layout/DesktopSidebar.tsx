@@ -16,7 +16,8 @@ import {
   KeyRound,
   ShieldCheck,
   UserCheck,
-  UserPlus
+  UserPlus,
+  Scissors
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { TabType, StoreProfile, UserProfile } from '@/types/attendance'
@@ -41,6 +42,7 @@ const NAV_ITEMS: { id: TabType; label: string; icon: React.FC<{ className?: stri
   { id: 'overtime', label: 'Over Duty', icon: Clock },
   { id: 'dailywage', label: 'Daily Wage', icon: CircleDollarSign },
   { id: 'advance', label: 'Advance', icon: HandCoins },
+  { id: 'deduction', label: 'Deductions', icon: Scissors },
   { id: 'staff', label: 'Staff Roster', icon: Users },
   { id: 'report', label: 'Report Sheet', icon: FileSpreadsheet },
   { id: 'payslip', label: 'Payslip Generator', icon: Receipt },

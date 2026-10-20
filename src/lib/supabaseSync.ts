@@ -21,19 +21,21 @@ export async function fetchStaffFromSupabase(): Promise<{
   }
 
   try {
-    // 1. Fetch all 5 normalized tables in parallel
+    // 1. Fetch all 6 normalized tables in parallel
     const [
       { data: staffData, error: staffError },
       { data: attendanceData, error: attendanceError },
       { data: overtimeData, error: overtimeError },
       { data: advancesData, error: advancesError },
-      { data: dailyWagesData, error: dailyWagesError }
+      { data: dailyWagesData, error: dailyWagesError },
+      { data: deductionsData, error: deductionsError }
     ] = await Promise.all([
       client.from('staff').select('*').order('id', { ascending: true }),
       client.from('attendance').select('*'),
       client.from('overtime').select('*'),
       client.from('advances').select('*'),
-      client.from('daily_wages').select('*')
+      client.from('daily_wages').select('*'),
+      client.from('deductions').select('*')
     ])
 
     if (staffError) return { data: null, error: staffError.message }
@@ -41,6 +43,7 @@ export async function fetchStaffFromSupabase(): Promise<{
     if (overtimeError) console.warn('Overtime sync warning:', overtimeError.message)
     if (advancesError) console.warn('Advances sync warning:', advancesError.message)
     if (dailyWagesError) console.warn('Daily wages sync warning:', dailyWagesError.message)
+    if (deductionsError) console.warn('Deductions sync warning:', deductionsError.message)
 
     if (!staffData || staffData.length === 0) {
       return { data: [], error: null }
@@ -75,6 +78,14 @@ export async function fetchStaffFromSupabase(): Promise<{
       advancesMap[sId][d] = Number(row.amount || 0)
     })
 
+    const deductionsMap: Record<string, Record<string, number | string>> = {}
+    ;(deductionsData || []).forEach((row: any) => {
+      const sId = String(row.staff_id)
+      const d = String(row.date)
+      if (!deductionsMap[sId]) deductionsMap[sId] = {}
+      deductionsMap[sId][d] = Number(row.amount || 0)
+    })
+
     const dailyWagesMap: Record<string, Record<string, number | string>> = {}
     ;(dailyWagesData || []).forEach((row: any) => {
       const sId = String(row.staff_id)
@@ -98,6 +109,7 @@ export async function fetchStaffFromSupabase(): Promise<{
         attendance: attendanceMap[id] || {},
         overtime: overtimeMap[id] || {},
         advances: advancesMap[id] || {},
+        deductions: deductionsMap[id] || {},
         wageByDate: dailyWagesMap[id] || {}
       }
     })
@@ -207,7 +219,29 @@ export async function pushStaffToSupabase(staffList: Staff[]): Promise<SyncResul
       if (advErr) console.warn('Advances push error:', advErr.message)
     }
 
-    // 5. Daily Wages Flatten & Upsert
+    // 5. Deductions Rows Flatten & Upsert
+    const deductionsRows: { staff_id: string; date: string; amount: number; updated_at: string }[] = []
+    staffList.forEach((s) => {
+      Object.entries(s.deductions || {}).forEach(([date, amt]) => {
+        if (Number(amt) > 0) {
+          deductionsRows.push({
+            staff_id: s.id,
+            date,
+            amount: Number(amt),
+            updated_at: timestamp
+          })
+        }
+      })
+    })
+
+    if (deductionsRows.length > 0) {
+      const { error: dedErr } = await client
+        .from('deductions')
+        .upsert(deductionsRows, { onConflict: 'staff_id,date' })
+      if (dedErr) console.warn('Deductions push error:', dedErr.message)
+    }
+
+    // 6. Daily Wages Flatten & Upsert
     const dailyWageRows: { staff_id: string; date: string; wage: number; updated_at: string }[] = []
     staffList.forEach((s) => {
       Object.entries(s.wageByDate || {}).forEach(([date, wage]) => {
@@ -335,6 +369,37 @@ export async function syncAdvanceRecord(
     }
   } catch (err) {
     console.error('Failed to sync advance record:', err)
+  }
+}
+
+/**
+ * Single Granular Deduction Sync
+ */
+export async function syncDeductionRecord(
+  staffId: string,
+  date: string,
+  amount: string | number
+): Promise<void> {
+  const client = getSupabase()
+  if (!client || !isSupabaseConfigured()) return
+
+  try {
+    const num = Number(amount || 0)
+    if (num <= 0) {
+      await client.from('deductions').delete().match({ staff_id: staffId, date })
+    } else {
+      await client.from('deductions').upsert(
+        {
+          staff_id: staffId,
+          date,
+          amount: num,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'staff_id,date' }
+      )
+    }
+  } catch (err) {
+    console.error('Failed to sync deduction record:', err)
   }
 }
 
