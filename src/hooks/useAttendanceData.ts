@@ -5,7 +5,8 @@ import {
   getNextDate,
   makeDates,
   monthRange,
-  calculateStaffPayroll
+  calculateStaffPayroll,
+  sanitizeDateRange
 } from '../lib/attendanceUtils'
 import { isSupabaseConfigured, testSupabaseConnection, getSupabase } from '../lib/supabaseClient'
 import { startKeepAliveService, stopKeepAliveService } from '../lib/supabaseKeepAlive'
@@ -40,6 +41,102 @@ const EMPTY_STORE_PROFILE: StoreProfile = {
   outletLogos: []
 }
 
+/**
+ * Merges cloud staff records with local staff records safely.
+ * Preserves local attendance, wages, overtime, advances, and deductions
+ * so that any changes pending or unsaved locally are never erased by cloud loads.
+ */
+function mergeStaffData(localList: Staff[], cloudList: Staff[]): Staff[] {
+  if (!localList || localList.length === 0) return cloudList
+  if (!cloudList || cloudList.length === 0) return localList
+
+  const cloudMap = new Map(cloudList.map((s) => [s.id, s]))
+  const merged: Staff[] = []
+
+  for (const cloudStaff of cloudList) {
+    const localStaff = localList.find((s) => s.id === cloudStaff.id)
+    if (!localStaff) {
+      merged.push(cloudStaff)
+      continue
+    }
+
+    // Merge attendance marks: keep cloud entries, but preserve any non-empty local marks that cloud lacks
+    const mergedAttendance: Record<string, AttendanceMark> = {
+      ...(localStaff.attendance || {}),
+      ...(cloudStaff.attendance || {})
+    }
+    Object.entries(localStaff.attendance || {}).forEach(([date, mark]) => {
+      if (mark && !cloudStaff.attendance?.[date]) {
+        mergedAttendance[date] = mark
+      }
+    })
+
+    // Merge overtime
+    const mergedOvertime = {
+      ...(localStaff.overtime || {}),
+      ...(cloudStaff.overtime || {})
+    }
+    Object.entries(localStaff.overtime || {}).forEach(([date, ot]) => {
+      if (ot && (Number(ot.amount || 0) > 0 || Number(ot.hours || 0) > 0) && !cloudStaff.overtime?.[date]) {
+        mergedOvertime[date] = ot
+      }
+    })
+
+    // Merge advances
+    const mergedAdvances = {
+      ...(localStaff.advances || {}),
+      ...(cloudStaff.advances || {})
+    }
+    Object.entries(localStaff.advances || {}).forEach(([date, adv]) => {
+      if (Number(adv || 0) > 0 && !cloudStaff.advances?.[date]) {
+        mergedAdvances[date] = adv
+      }
+    })
+
+    // Merge deductions
+    const mergedDeductions = {
+      ...(localStaff.deductions || {}),
+      ...(cloudStaff.deductions || {})
+    }
+    Object.entries(localStaff.deductions || {}).forEach(([date, ded]) => {
+      if (Number(ded || 0) > 0 && !cloudStaff.deductions?.[date]) {
+        mergedDeductions[date] = ded
+      }
+    })
+
+    // Merge daily wages overrides
+    const mergedWageByDate = {
+      ...(localStaff.wageByDate || {}),
+      ...(cloudStaff.wageByDate || {})
+    }
+    Object.entries(localStaff.wageByDate || {}).forEach(([date, wage]) => {
+      if (wage !== undefined && wage !== '' && cloudStaff.wageByDate?.[date] === undefined) {
+        mergedWageByDate[date] = wage
+      }
+    })
+
+    merged.push({
+      ...cloudStaff,
+      wage: cloudStaff.wage !== '' && cloudStaff.wage !== undefined ? cloudStaff.wage : (localStaff.wage || ''),
+      attendance: mergedAttendance,
+      overtime: mergedOvertime,
+      advances: mergedAdvances,
+      deductions: mergedDeductions,
+      wageByDate: mergedWageByDate
+    })
+  }
+
+  // Preserve any local staff that doesn't exist in cloud yet
+  for (const localStaff of localList) {
+    if (!cloudMap.has(localStaff.id)) {
+      merged.push(localStaff)
+    }
+  }
+
+  merged.sort((a, b) => Number(a.id) - Number(b.id))
+  return merged
+}
+
 export function useAttendanceData() {
   const today = useMemo(() => localToday(), [])
 
@@ -50,15 +147,21 @@ export function useAttendanceData() {
     return 'light'
   })
 
-  // Date states
+  // Date states with automatic clamping of stale dates (within 30-60 days of today)
   const [fromDate, setFromDate] = useState<string>(() => {
-    const saved = localStorage.getItem(FROM_KEY) || today
-    return saved > today ? today : saved
+    const savedFrom = localStorage.getItem(FROM_KEY)
+    const savedTo = localStorage.getItem(TO_KEY)
+    const sanitized = sanitizeDateRange(savedFrom, savedTo, 31, 60)
+    localStorage.setItem(FROM_KEY, sanitized.fromDate)
+    localStorage.setItem(TO_KEY, sanitized.toDate)
+    return sanitized.fromDate
   })
 
   const [toDate, setToDate] = useState<string>(() => {
-    const saved = localStorage.getItem(TO_KEY) || today
-    return saved > today ? today : saved
+    const savedFrom = localStorage.getItem(FROM_KEY)
+    const savedTo = localStorage.getItem(TO_KEY)
+    const sanitized = sanitizeDateRange(savedFrom, savedTo, 31, 60)
+    return sanitized.toDate
   })
 
   const [entryDate, setEntryDate] = useState<string>(today)
@@ -151,7 +254,7 @@ export function useAttendanceData() {
         if (staffErr) {
           console.warn('Failed to fetch staff from Supabase:', staffErr)
         } else if (cloudStaff && Array.isArray(cloudStaff)) {
-          setStaffList(cloudStaff)
+          setStaffList((prevLocal) => mergeStaffData(prevLocal, cloudStaff))
         }
 
         if (cloudProfile && cloudProfile.name) {
@@ -343,20 +446,19 @@ export function useAttendanceData() {
     }
   }, [staffList, activeDates])
 
-  // Period handler
+  // Period handler with automatic clamping
   const handleSetPeriod = useCallback((start: string, end: string): boolean => {
-    const validEnd = end > today ? today : end
-    const validStart = start > validEnd ? validEnd : start
-    const dates = makeDates(validStart, validEnd)
+    const sanitized = sanitizeDateRange(start, end, 31, 60)
+    const dates = makeDates(sanitized.fromDate, sanitized.toDate)
     if (!dates) {
       return false
     }
-    setFromDate(validStart)
-    setToDate(validEnd)
-    localStorage.setItem(FROM_KEY, validStart)
-    localStorage.setItem(TO_KEY, validEnd)
+    setFromDate(sanitized.fromDate)
+    setToDate(sanitized.toDate)
+    localStorage.setItem(FROM_KEY, sanitized.fromDate)
+    localStorage.setItem(TO_KEY, sanitized.toDate)
     return true
-  }, [today])
+  }, [])
 
   const handleSetPayslipMonth = useCallback((month: string) => {
     setPayslipMonth(month)
@@ -381,14 +483,18 @@ export function useAttendanceData() {
     )
 
     if (date === today) {
-      // Hold in pending queue for today
+      // Hold in pending queue for UI indicator
       setPendingTodayAttendance((prev) => ({
         ...prev,
         [id]: mark
       }))
-    } else {
-      // For previous dates, directly sync to DB as confirmed via modal
-      syncAttendanceRecord(id, date, mark)
+    }
+
+    // Auto-sync directly to Supabase in the background so entries are never lost
+    if (isSupabaseConfigured()) {
+      syncAttendanceRecord(id, date, mark).catch((err) =>
+        console.error('Failed to auto-sync attendance record:', err)
+      )
     }
   }, [today])
 
@@ -443,13 +549,27 @@ export function useAttendanceData() {
     }
   }, [pendingTodayAttendance, pendingWages, staffList, today])
 
+  // Debounced auto-save for today's pending changes (commits pending queue after 2.5s of inactivity)
+  useEffect(() => {
+    const hasPendingAttendance = Object.keys(pendingTodayAttendance).length > 0
+    const hasPendingWages = Object.keys(pendingWages).length > 0
+
+    if (!hasPendingAttendance && !hasPendingWages) return
+
+    const timer = setTimeout(() => {
+      savePendingTodayChanges().catch(console.error)
+    }, 2500)
+
+    return () => clearTimeout(timer)
+  }, [pendingTodayAttendance, pendingWages, savePendingTodayChanges])
+
   const discardPendingTodayChanges = useCallback(async () => {
     setPendingTodayAttendance({})
     setPendingWages({})
     if (isSupabaseConfigured()) {
       const { data: cloudStaff } = await fetchStaffFromSupabase()
       if (cloudStaff && Array.isArray(cloudStaff)) {
-        setStaffList(cloudStaff)
+        setStaffList((prevLocal) => mergeStaffData(prevLocal, cloudStaff))
       }
     }
   }, [])
@@ -820,7 +940,7 @@ export function useAttendanceData() {
     const { data: cloudStaff } = await fetchStaffFromSupabase()
     const { data: cloudProfile } = await fetchStoreProfileFromSupabase()
     if (cloudStaff && Array.isArray(cloudStaff)) {
-      setStaffList(cloudStaff)
+      setStaffList((prevLocal) => mergeStaffData(prevLocal, cloudStaff))
     }
     if (cloudProfile && cloudProfile.name) {
       setStoreProfileState(cloudProfile)

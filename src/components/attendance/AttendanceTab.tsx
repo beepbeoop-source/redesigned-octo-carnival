@@ -23,7 +23,7 @@ import {
   TableRow
 } from '@/components/ui/table'
 import type { Staff, AttendanceMark } from '@/types/attendance'
-import { formatDate, formatCurrency, calculateStaffPayroll } from '@/lib/attendanceUtils'
+import { formatDate, formatCurrency, calculateStaffPayroll, sanitizeDateRange } from '@/lib/attendanceUtils'
 import { DatePicker } from '@/components/ui/date-picker'
 import { UnsavedChangesBanner } from '@/components/layout/UnsavedChangesBanner'
 import { cn } from '@/lib/utils'
@@ -63,6 +63,13 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
 }) => {
   const [localFrom, setLocalFrom] = useState<string>(fromDate)
   const [localTo, setLocalTo] = useState<string>(toDate)
+
+  // Keep local date pickers synchronized when parent period changes
+  React.useEffect(() => {
+    setLocalFrom(fromDate)
+    setLocalTo(toDate)
+  }, [fromDate, toDate])
+
   const [selectedMobileDate, setSelectedMobileDate] = useState<string>(today)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>(() => {
     if (typeof window !== 'undefined' && window.innerWidth >= 768) {
@@ -76,15 +83,12 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
 
   const handleApply = () => {
     setErrorMsg('')
-    let from = localFrom
-    let to = localTo
-    if (to > today) to = today
-    if (from > to) from = to
-    setLocalFrom(from)
-    setLocalTo(to)
-    const success = onSetPeriod(from, to)
+    const sanitized = sanitizeDateRange(localFrom, localTo, 31, 60)
+    setLocalFrom(sanitized.fromDate)
+    setLocalTo(sanitized.toDate)
+    const success = onSetPeriod(sanitized.fromDate, sanitized.toDate)
     if (!success) {
-      setErrorMsg('Please select a valid date range of up to 62 days.')
+      setErrorMsg('Please select a valid date range of up to 60 days.')
     }
   }
 

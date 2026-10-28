@@ -8,6 +8,55 @@ export interface SyncResult {
 }
 
 /**
+ * Helper to fetch all rows from a Supabase table in paginated chunks of 1000.
+ * PostgREST limits queries to 1000 rows by default. Paginating with .range()
+ * and deterministic ordering ensures no records are omitted regardless of database size.
+ */
+async function fetchAllTableRows(
+  client: any,
+  tableName: string,
+  orderByCol: string,
+  ascending: boolean = false
+): Promise<{ data: any[]; error: any }> {
+  const CHUNK_SIZE = 1000
+  const allRows: any[] = []
+  let from = 0
+
+  while (true) {
+    const to = from + CHUNK_SIZE - 1
+    let query = client
+      .from(tableName)
+      .select('*')
+      .order(orderByCol, { ascending })
+
+    // Add secondary ordering by id if column is not id for deterministic pagination
+    if (orderByCol !== 'id') {
+      query = query.order('id', { ascending: true })
+    }
+
+    const { data, error } = await query.range(from, to)
+
+    if (error) {
+      return { data: allRows, error }
+    }
+
+    if (!data || data.length === 0) {
+      break
+    }
+
+    allRows.push(...data)
+
+    if (data.length < CHUNK_SIZE) {
+      break
+    }
+
+    from += CHUNK_SIZE
+  }
+
+  return { data: allRows, error: null }
+}
+
+/**
  * Fetch all staff records and assemble their attendance, overtime,
  * advances, and daily wage overrides from normalized tables.
  */
@@ -21,7 +70,7 @@ export async function fetchStaffFromSupabase(): Promise<{
   }
 
   try {
-    // 1. Fetch all 6 normalized tables in parallel
+    // 1. Fetch all 6 normalized tables in parallel using chunked pagination
     const [
       { data: staffData, error: staffError },
       { data: attendanceData, error: attendanceError },
@@ -30,12 +79,12 @@ export async function fetchStaffFromSupabase(): Promise<{
       { data: dailyWagesData, error: dailyWagesError },
       { data: deductionsData, error: deductionsError }
     ] = await Promise.all([
-      client.from('staff').select('*').order('id', { ascending: true }),
-      client.from('attendance').select('*'),
-      client.from('overtime').select('*'),
-      client.from('advances').select('*'),
-      client.from('daily_wages').select('*'),
-      client.from('deductions').select('*')
+      fetchAllTableRows(client, 'staff', 'id', true),
+      fetchAllTableRows(client, 'attendance', 'date', false),
+      fetchAllTableRows(client, 'overtime', 'date', false),
+      fetchAllTableRows(client, 'advances', 'date', false),
+      fetchAllTableRows(client, 'daily_wages', 'date', false),
+      fetchAllTableRows(client, 'deductions', 'date', false)
     ])
 
     if (staffError) return { data: null, error: staffError.message }
@@ -150,9 +199,15 @@ export async function pushStaffToSupabase(staffList: Staff[]): Promise<SyncResul
       updated_at: timestamp
     }))
 
+    // Chunk upserts in batches of 500 to avoid request payload and gateway limits
+    const BATCH_SIZE = 500
+
     if (staffPayload.length > 0) {
-      const { error: staffErr } = await client.from('staff').upsert(staffPayload, { onConflict: 'id' })
-      if (staffErr) throw staffErr
+      for (let i = 0; i < staffPayload.length; i += BATCH_SIZE) {
+        const batch = staffPayload.slice(i, i + BATCH_SIZE)
+        const { error: staffErr } = await client.from('staff').upsert(batch, { onConflict: 'id' })
+        if (staffErr) throw staffErr
+      }
     }
 
     // 2. Attendance Rows Flatten & Upsert
@@ -166,10 +221,13 @@ export async function pushStaffToSupabase(staffList: Staff[]): Promise<SyncResul
     })
 
     if (attendanceRows.length > 0) {
-      const { error: attErr } = await client
-        .from('attendance')
-        .upsert(attendanceRows, { onConflict: 'staff_id,date' })
-      if (attErr) console.warn('Attendance push error:', attErr.message)
+      for (let i = 0; i < attendanceRows.length; i += BATCH_SIZE) {
+        const batch = attendanceRows.slice(i, i + BATCH_SIZE)
+        const { error: attErr } = await client
+          .from('attendance')
+          .upsert(batch, { onConflict: 'staff_id,date' })
+        if (attErr) console.warn('Attendance push error:', attErr.message)
+      }
     }
 
     // 3. Overtime Rows Flatten & Upsert
@@ -191,10 +249,13 @@ export async function pushStaffToSupabase(staffList: Staff[]): Promise<SyncResul
     })
 
     if (overtimeRows.length > 0) {
-      const { error: otErr } = await client
-        .from('overtime')
-        .upsert(overtimeRows, { onConflict: 'staff_id,date' })
-      if (otErr) console.warn('Overtime push error:', otErr.message)
+      for (let i = 0; i < overtimeRows.length; i += BATCH_SIZE) {
+        const batch = overtimeRows.slice(i, i + BATCH_SIZE)
+        const { error: otErr } = await client
+          .from('overtime')
+          .upsert(batch, { onConflict: 'staff_id,date' })
+        if (otErr) console.warn('Overtime push error:', otErr.message)
+      }
     }
 
     // 4. Advances Rows Flatten & Upsert
@@ -213,10 +274,13 @@ export async function pushStaffToSupabase(staffList: Staff[]): Promise<SyncResul
     })
 
     if (advancesRows.length > 0) {
-      const { error: advErr } = await client
-        .from('advances')
-        .upsert(advancesRows, { onConflict: 'staff_id,date' })
-      if (advErr) console.warn('Advances push error:', advErr.message)
+      for (let i = 0; i < advancesRows.length; i += BATCH_SIZE) {
+        const batch = advancesRows.slice(i, i + BATCH_SIZE)
+        const { error: advErr } = await client
+          .from('advances')
+          .upsert(batch, { onConflict: 'staff_id,date' })
+        if (advErr) console.warn('Advances push error:', advErr.message)
+      }
     }
 
     // 5. Deductions Rows Flatten & Upsert
@@ -235,10 +299,13 @@ export async function pushStaffToSupabase(staffList: Staff[]): Promise<SyncResul
     })
 
     if (deductionsRows.length > 0) {
-      const { error: dedErr } = await client
-        .from('deductions')
-        .upsert(deductionsRows, { onConflict: 'staff_id,date' })
-      if (dedErr) console.warn('Deductions push error:', dedErr.message)
+      for (let i = 0; i < deductionsRows.length; i += BATCH_SIZE) {
+        const batch = deductionsRows.slice(i, i + BATCH_SIZE)
+        const { error: dedErr } = await client
+          .from('deductions')
+          .upsert(batch, { onConflict: 'staff_id,date' })
+        if (dedErr) console.warn('Deductions push error:', dedErr.message)
+      }
     }
 
     // 6. Daily Wages Flatten & Upsert
@@ -257,10 +324,13 @@ export async function pushStaffToSupabase(staffList: Staff[]): Promise<SyncResul
     })
 
     if (dailyWageRows.length > 0) {
-      const { error: dwErr } = await client
-        .from('daily_wages')
-        .upsert(dailyWageRows, { onConflict: 'staff_id,date' })
-      if (dwErr) console.warn('Daily wages push error:', dwErr.message)
+      for (let i = 0; i < dailyWageRows.length; i += BATCH_SIZE) {
+        const batch = dailyWageRows.slice(i, i + BATCH_SIZE)
+        const { error: dwErr } = await client
+          .from('daily_wages')
+          .upsert(batch, { onConflict: 'staff_id,date' })
+        if (dwErr) console.warn('Daily wages push error:', dwErr.message)
+      }
     }
 
     return {

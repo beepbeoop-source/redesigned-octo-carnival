@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { Staff, AttendanceMark } from '@/types/attendance'
-import { formatDate } from '@/lib/attendanceUtils'
+import { formatDate, localToday } from '@/lib/attendanceUtils'
 import {
   CheckCircle2,
   Clock,
@@ -69,7 +69,7 @@ export const StaffActionSheet: React.FC<StaffActionSheetProps> = ({
 
   if (!staff) return null
 
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStr = localToday()
   const isFutureDate = currentDate > todayStr
   const currentMark = staff.attendance[currentDate] || ''
 

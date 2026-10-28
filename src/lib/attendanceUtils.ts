@@ -36,6 +36,72 @@ export function formatCurrency(amount: number): string {
   return `₹${Math.round(amount).toLocaleString('en-IN')}`
 }
 
+/**
+ * Clamps and sanitizes a date range to prevent stale localStorage dates:
+ * - toDate never exceeds today
+ * - if toDate is more than maxAllowedDays in the past, defaults to today
+ * - fromDate never exceeds toDate
+ * - fromDate is clamped so (toDate - fromDate) does not exceed maxAllowedDays (default 60 days)
+ * - if fromDate is older than maxAllowedDays, it clamps to defaultDays (default 31 days) before toDate
+ */
+export function sanitizeDateRange(
+  rawFrom: string | null | undefined,
+  rawTo: string | null | undefined,
+  defaultDays: number = 31,
+  maxAllowedDays: number = 60
+): { fromDate: string; toDate: string } {
+  const today = localToday()
+
+  // 1. Validate toDate
+  let to = rawTo && rawTo.trim() ? rawTo.trim() : today
+  if (to > today || Number.isNaN(new Date(`${to}T00:00:00`).valueOf())) {
+    to = today
+  }
+
+  const toDateObj = new Date(`${to}T00:00:00`)
+  const todayObj = new Date(`${today}T00:00:00`)
+
+  // If saved 'to' is more than maxAllowedDays in the past, reset 'to' to today
+  if ((todayObj.getTime() - toDateObj.getTime()) / (1000 * 60 * 60 * 24) > maxAllowedDays) {
+    to = today
+  }
+
+  const effectiveToDateObj = new Date(`${to}T00:00:00`)
+
+  // Compute earliest allowed date
+  const maxLimitDate = new Date(effectiveToDateObj)
+  maxLimitDate.setDate(maxLimitDate.getDate() - maxAllowedDays)
+  const yMax = maxLimitDate.getFullYear()
+  const mMax = String(maxLimitDate.getMonth() + 1).padStart(2, '0')
+  const dMax = String(maxLimitDate.getDate()).padStart(2, '0')
+  const earliestAllowed = `${yMax}-${mMax}-${dMax}`
+
+  // Compute default fallback start date
+  const defaultStartDate = new Date(effectiveToDateObj)
+  defaultStartDate.setDate(defaultStartDate.getDate() - defaultDays)
+  const yDef = defaultStartDate.getFullYear()
+  const mDef = String(defaultStartDate.getMonth() + 1).padStart(2, '0')
+  const dDef = String(defaultStartDate.getDate()).padStart(2, '0')
+  const defaultFrom = `${yDef}-${mDef}-${dDef}`
+
+  let from = rawFrom && rawFrom.trim() ? rawFrom.trim() : defaultFrom
+  if (Number.isNaN(new Date(`${from}T00:00:00`).valueOf())) {
+    from = defaultFrom
+  }
+
+  // If fromDate is stale (older than maxAllowedDays before toDate)
+  if (from < earliestAllowed) {
+    from = defaultFrom
+  }
+
+  // If fromDate is after toDate
+  if (from > to) {
+    from = to
+  }
+
+  return { fromDate: from, toDate: to }
+}
+
 export function makeDates(fromDate: string, toDate: string): string[] | null {
   const start = new Date(`${fromDate}T00:00:00`)
   const end = new Date(`${toDate}T00:00:00`)
