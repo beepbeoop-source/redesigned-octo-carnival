@@ -136,12 +136,18 @@ export function App() {
     setIsStaffModalOpen(true)
   }
 
-  const handleSaveStaff = (staffData: Omit<Staff, 'attendance' | 'overtime' | 'advances'>) => {
+  const handleSaveStaff = (
+    staffData: Omit<Staff, 'attendance' | 'overtime' | 'advances'>,
+    originalId?: string
+  ) => {
     if (editingStaff) {
-      updateStaff({
-        ...editingStaff,
-        ...staffData
-      })
+      updateStaff(
+        {
+          ...editingStaff,
+          ...staffData
+        },
+        originalId || editingStaff.id
+      )
     } else {
       addStaff(staffData)
     }

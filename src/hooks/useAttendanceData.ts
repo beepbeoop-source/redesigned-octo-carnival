@@ -858,11 +858,24 @@ export function useAttendanceData() {
     })
   }, [])
 
-  const updateStaff = useCallback((updatedStaff: Staff) => {
+  const updateStaff = useCallback((updatedStaff: Staff, originalId?: string) => {
+    const targetId = originalId || updatedStaff.id
     setStaffList((prev) =>
-      prev.map((item) => (item.id === updatedStaff.id ? updatedStaff : item))
+      prev.map((item) => {
+        if (item.id === targetId) {
+          return {
+            ...item,
+            ...updatedStaff,
+            id: updatedStaff.id
+          }
+        }
+        return item
+      })
     )
     syncStaffProfile(updatedStaff)
+    if (originalId && originalId !== updatedStaff.id) {
+      deleteStaffFromSupabase(originalId)
+    }
   }, [])
 
   const deleteStaff = useCallback((id: string) => {

@@ -21,7 +21,10 @@ import type { Staff, StaffStatus } from '@/types/attendance'
 interface StaffModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (staffData: Omit<Staff, 'attendance' | 'overtime' | 'advances'>) => void
+  onSave: (
+    staffData: Omit<Staff, 'attendance' | 'overtime' | 'advances'>,
+    originalId?: string
+  ) => void
   editingStaff: Staff | null
   existingOutlets: string[]
 }
@@ -93,16 +96,19 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     }
 
     try {
-      onSave({
-        id: id.trim(),
-        name: name.trim(),
-        dept: dept.trim() || 'Other',
-        outlet: outlet.trim() || 'Main Branch',
-        designation: designation.trim() || '-',
-        status,
-        wage: wage.trim() || '',
-        salaryChanges: salaryType === 'variable'
-      })
+      onSave(
+        {
+          id: id.trim(),
+          name: name.trim(),
+          dept: dept.trim() || 'Other',
+          outlet: outlet.trim() || 'Main Branch',
+          designation: designation.trim() || '-',
+          status,
+          wage: wage.trim() || '',
+          salaryChanges: salaryType === 'variable'
+        },
+        editingStaff?.id
+      )
       onClose()
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -138,7 +144,6 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                 id="staff-id"
                 value={id}
                 onChange={(e) => setId(e.target.value)}
-                readOnly={!!editingStaff}
                 placeholder="e.g. 143"
                 className="h-9 bg-background"
                 required

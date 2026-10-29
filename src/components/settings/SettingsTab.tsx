@@ -161,12 +161,25 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [statusMessage, setStatusMessage] = useState<string>('')
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isUserTypingRef = useRef<boolean>(false)
+  const formValuesRef = useRef({
+    name: storeProfile.name || '',
+    address: storeProfile.address || '',
+    phone: storeProfile.phone || ''
+  })
 
-  // Sync state with incoming storeProfile props
+  // Sync state with incoming storeProfile props (only if not actively typing)
   useEffect(() => {
-    setName(storeProfile.name || '')
-    setAddress(storeProfile.address || '')
-    setPhone(storeProfile.phone || '')
+    if (!isUserTypingRef.current) {
+      setName(storeProfile.name || '')
+      setAddress(storeProfile.address || '')
+      setPhone(storeProfile.phone || '')
+      formValuesRef.current = {
+        name: storeProfile.name || '',
+        address: storeProfile.address || '',
+        phone: storeProfile.phone || ''
+      }
+    }
     setLogo(storeProfile.logo || '')
     setOutlets(
       Array.isArray(storeProfile.outlets) && storeProfile.outlets.length > 0
@@ -230,6 +243,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
   // Debounced Auto-Save for Text Input Fields (name, phone, address)
   const handleFieldChange = (field: 'name' | 'phone' | 'address', value: string) => {
+    isUserTypingRef.current = true
+    formValuesRef.current[field] = value
+
     if (field === 'name') setName(value)
     if (field === 'phone') setPhone(value)
     if (field === 'address') setAddress(value)
@@ -241,16 +257,17 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     setSaveStatus('saving')
 
     debounceTimerRef.current = setTimeout(() => {
+      isUserTypingRef.current = false
       const updated: StoreProfile = {
-        name: (field === 'name' ? value : name).trim() || 'Hotel Bilal & Restaurant',
-        address: (field === 'address' ? value : address).trim(),
-        phone: (field === 'phone' ? value : phone).trim(),
+        name: formValuesRef.current.name.trim() || 'Hotel Bilal & Restaurant',
+        address: formValuesRef.current.address.trim(),
+        phone: formValuesRef.current.phone.trim(),
         outlets,
         logo,
         outletLogos: outletLogos.filter((l) => l.name.trim() && l.logo)
       }
       triggerAutoSave(updated)
-    }, 500)
+    }, 800)
   }
 
   // Instant Auto-Save for Direct Actions (Logos, Outlets)
